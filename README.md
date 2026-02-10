@@ -1,13 +1,5 @@
 # ClockGuard 
 
-## Table of Contents
-- [About the Project](#-about-the-project)
-- [System Architecture](#-system-architecture)
-- [Tech Stack](#-tech-stack)
-- [Security & Privacy](#-security--privacy)
-- [Getting Started](#-getting-started)
-- [Project Roadmap](#-project-roadmap)
-- [The Team](#-the-team)
 
 ---
 
