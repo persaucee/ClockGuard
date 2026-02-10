@@ -16,7 +16,7 @@
 
 Unlike traditional legacy systems that rely on insecure ID badges or manual spreadsheets, ClockGuard utilizes biometrics to perform real-time facial verification on the client device. It securely communicates with a serverless backend to log immutable attendance records, to automating the calculation of billable hours.
 
-## 🏗 System Architecture
+##  System Architecture
 
 1.  **(Client)** - Captures video feed via OpenCV.
     - Uses a Pre-Trained CNN (dlib/FaceNet) to extract 512-d embeddings.
@@ -28,7 +28,7 @@ Unlike traditional legacy systems that rely on insecure ID badges or manual spre
 3.  **(Storage)**
     - Hosted on **Supabase** (PostgreSQL).
     - Uses **pgvector** for similarity search.
-## 🛠 Tech Stack
+##  Tech Stack
 
 | **Client** | Python, OpenCV, Face_Recognition | Local biometric processing & UI |
 | **Backend** | FastAPI, Uvicorn | REST API & Business Logic |
@@ -38,7 +38,7 @@ Unlike traditional legacy systems that rely on insecure ID badges or manual spre
 
 ---
 
-## 🔒 Security & Privacy
+##  Security & Privacy
 ClockGuard stores 0 images
 * We only store vector embeddings. It is hard to reverse engineer a face from those vectors if compromised. 
 * Raw video feeds never leave the local device.
