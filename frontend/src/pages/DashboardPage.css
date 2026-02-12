@@ -1,0 +1,24 @@
+/* DashboardPage Styles - Minimal Placeholder */
+
+.dashboard-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+  padding: 24px;
+}
+
+.dashboard-placeholder {
+  max-width: 800px;
+  margin: 0 auto;
+  padding-top: 60px;
+}
+
+.dashboard-placeholder h1 {
+  color: #111827;
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.dashboard-placeholder p {
+  color: #6b7280;
+  font-size: 1.125rem;
+}
