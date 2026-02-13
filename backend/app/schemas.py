@@ -15,5 +15,6 @@ class LoginData(BaseModel):
     
 class UserData(BaseModel):
     username: str
-    full_name: Optional[str] = None
-
+    first_name: str
+    last_name: str
+    company: Optional[str] = None
