@@ -8,3 +8,4 @@ pydantic>=1.10.0
 opencv-python
 sqlalchemy
 psycopg
+customtkinter
