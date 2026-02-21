@@ -9,36 +9,41 @@ export const theme = {
   // Brand Identity
   brandName: "ClockGuard",
   
-  // Colors - Placeholder values until logo/branding is provided in Scrum 7
+  // Colors - Based on ClockGuard logo (blue & teal)
   colors: {
-    // Primary brand color - to be updated once logo is available
-    primary: "#2563eb",      // Professional blue (placeholder)
-    primaryHover: "#1d4ed8",
-    primaryLight: "#3b82f6",
+    // Primary brand colors from logo
+    primary: "#2B5F8D",      // Navy blue from logo
+    primaryHover: "#234a6d",
+    primaryLight: "#3a7ab0",
+    
+    // Accent color from logo
+    accent: "#00B4D8",       // Teal/cyan from logo
+    accentHover: "#0096b8",
+    accentLight: "#33c4e2",
     
     // Backgrounds
-    background: "#ffffff",
-    backgroundAlt: "#f9fafb",
+    background: "#f8fafc",   // Subtle off-white
+    backgroundAlt: "#f1f5f9",
     surface: "#ffffff",
     
     // Text colors
-    text: "#111827",
-    textSecondary: "#6b7280",
-    textLight: "#9ca3af",
+    text: "#1e293b",
+    textSecondary: "#64748b",
+    textLight: "#94a3b8",
     
     // Semantic colors
     success: "#10b981",
     warning: "#f59e0b",
     error: "#ef4444",
-    info: "#3b82f6",
+    info: "#00B4D8",         // Using brand teal
     
     // Borders
-    border: "#e5e7eb",
-    borderLight: "#f3f4f6",
+    border: "#e2e8f0",
+    borderLight: "#f1f5f9",
     
     // Shadows
-    shadow: "rgba(0, 0, 0, 0.1)",
-    shadowDark: "rgba(0, 0, 0, 0.15)",
+    shadow: "rgba(43, 95, 141, 0.08)",      // Subtle primary blue tint
+    shadowDark: "rgba(43, 95, 141, 0.12)",
   },
   
   // Spacing scale (in pixels)

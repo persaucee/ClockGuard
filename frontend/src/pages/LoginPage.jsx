@@ -1,27 +1,32 @@
 /**
- * LoginPage - Minimal Placeholder
+ * LoginPage - Branded Placeholder
  * 
  * Scrum 10 will implement the full login UI with:
- * - ClockGuard logo
  * - Email/password form
  * - Sign In button
- * - Card layout
+ * - Authentication logic
  */
 
 import React from 'react';
 import './LoginPage.css';
+import clockGuardLogo from '../assets/CGlogo.png';
 
 function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>ClockGuard Admin</h1>
+        <div className="login-logo">
+          <img src={clockGuardLogo} alt="ClockGuard Logo" />
+        </div>
+        <h1>Admin Dashboard</h1>
         <p className="login-placeholder">
-          Login UI coming in Scrum 10
+          Login form coming in Scrum 10
         </p>
-        <p className="login-subtitle">
-          Facial Recognition Clock-In/Out System
-        </p>
+        <div className="login-button-preview">
+          <button className="btn-primary" disabled>
+            Sign In (Preview)
+          </button>
+        </div>
       </div>
     </div>
   );
