@@ -1,10 +1,10 @@
 /**
- * DashboardPage - With Navbar (Scrum 9)
+ * DashboardPage - Basic Dashboard Shell (Scrum 11)
  * 
- * Scrum 11 will implement the full dashboard shell with:
- * - Sidebar navigation
- * - Main content area
- * - Welcome/overview content
+ * Features:
+ * - Navbar on top
+ * - Content area below
+ * - Welcome message
  */
 
 import React from 'react';
@@ -17,8 +17,7 @@ function DashboardPage() {
       <Navbar />
       <div className="dashboard-content">
         <div className="dashboard-placeholder">
-          <h1>Welcome to ClockGuard Admin Panel</h1>
-          <p>Dashboard layout and navigation coming in Scrum 11</p>
+          <h1>Welcome to ClockGuard Admin Panel.</h1>
         </div>
       </div>
     </div>

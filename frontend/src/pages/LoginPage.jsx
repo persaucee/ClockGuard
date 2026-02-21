@@ -1,25 +1,29 @@
 /**
- * LoginPage - Functional Login Form (Scrum 10)
+ * LoginPage - Functional Login Form (Scrum 11)
  * 
  * Features:
  * - Email/password form inputs
- * - Sign In button with console logging
+ * - Sign In button navigates to /dashboard
  * - No API integration yet (coming in future sprints)
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
 import clockGuardLogo from '../assets/CGlogo.png';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Login Form Submitted:');
     console.log('Email:', email);
     console.log('Password:', password);
+    // Navigate to dashboard
+    navigate('/dashboard');
   };
 
   return (
