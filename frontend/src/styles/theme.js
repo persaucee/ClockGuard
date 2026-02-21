@@ -11,15 +11,15 @@ export const theme = {
   
   // Colors - Based on ClockGuard logo (blue & teal)
   colors: {
-    // Primary brand colors from logo
-    primary: "#2B5F8D",      // Navy blue from logo
-    primaryHover: "#234a6d",
-    primaryLight: "#3a7ab0",
+    // Primary brand colors - Updated teal palette
+    primary: "#007F80",      // Darker teal from palette
+    primaryHover: "#006566",
+    primaryLight: "#009C9D",
     
-    // Accent color from logo
-    accent: "#00B4D8",       // Teal/cyan from logo
-    accentHover: "#0096b8",
-    accentLight: "#33c4e2",
+    // Accent color from logo - Vibrant teal
+    accent: "#03C0C1",       // Teal from palette
+    accentHover: "#009C9D",
+    accentLight: "#00D8D8",
     
     // Backgrounds
     background: "#f8fafc",   // Subtle off-white

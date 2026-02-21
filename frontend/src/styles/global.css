@@ -6,15 +6,15 @@
 
 /* CSS Variables - ClockGuard Brand Colors */
 :root {
-  /* Primary Colors (Navy Blue) */
-  --color-primary: #2B5F8D;
-  --color-primary-hover: #234a6d;
-  --color-primary-light: #3a7ab0;
+  /* Primary Colors (Darker Teal) */
+  --color-primary: #007F80;
+  --color-primary-hover: #006566;
+  --color-primary-light: #009C9D;
   
-  /* Accent Colors (Teal) */
-  --color-accent: #00B4D8;
-  --color-accent-hover: #0096b8;
-  --color-accent-light: #33c4e2;
+  /* Accent Colors (Vibrant Teal) */
+  --color-accent: #03C0C1;
+  --color-accent-hover: #009C9D;
+  --color-accent-light: #00D8D8;
   
   /* Backgrounds */
   --color-background: #f8fafc;

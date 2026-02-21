@@ -3,13 +3,16 @@
 .dashboard-page {
   min-height: 100vh;
   background-color: var(--color-background);
-  padding: var(--spacing-lg);
+}
+
+.dashboard-content {
+  padding: var(--spacing-xl) var(--spacing-lg);
 }
 
 .dashboard-placeholder {
   max-width: 900px;
   margin: 0 auto;
-  padding-top: 80px;
+  padding-top: 40px;
   animation: fadeIn 0.4s ease-in-out;
 }
 
