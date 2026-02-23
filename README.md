@@ -36,4 +36,5 @@ ClockGuard stores 0 images
 * Raw video feeds never leave the local device.
 * All database logs are append only to prevent tampering.
 
-Created By: Dave Persaud, Zachary Fernandez, Andrew Yastangacal, 
+Created By: Dave Persaud, Zachary Fernandez, Andrew Yastangacal, Sabeeh Qureshi Roheemat Adebiyi
+
