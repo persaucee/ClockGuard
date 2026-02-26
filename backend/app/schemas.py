@@ -1,8 +1,9 @@
-from typing import Generic, Optional, TypeVar
+from pydantic import BaseModel, EmailStr, ConfigDict
+from uuid import UUID
+from datetime import datetime
+from typing import Generic, TypeVar, Optional
 
-from pydantic import BaseModel
-
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T")
 
 class APIResponse(BaseModel, Generic[T]):
     success: bool
@@ -18,3 +19,21 @@ class UserData(BaseModel):
     first_name: str
     last_name: str
     company: Optional[str] = None
+
+class EmployeeBase(BaseModel):
+    name: Optional[str] = None
+    hourly_rate: Optional[float] = None
+    email: Optional[EmailStr] = None
+
+class EmployeeCreate(EmployeeBase):
+    pass
+class EmployeeUpdate(BaseModel):
+    name: Optional[str] = None
+    hourly_rate: Optional[float] = None
+    email: Optional[EmailStr] = None
+
+class EmployeeResponse(EmployeeBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)

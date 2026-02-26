@@ -1,7 +1,7 @@
 import uuid
 
 from app.database import Base
-from sqlalchemy import TIMESTAMP, Column, String, func
+from sqlalchemy import TIMESTAMP, Column, String, func, Float
 from sqlalchemy.dialects.postgresql import UUID
 
 
@@ -15,3 +15,13 @@ class Admin(Base):
     last_name = Column(String(100), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+    name = Column(String(255), nullable=True)
+    hourly_rate = Column(Float, nullable=True)
+    email = Column(String(255), nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),onupdate=func.now(),nullable=False)
