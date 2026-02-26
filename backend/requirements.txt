@@ -9,4 +9,4 @@ pydantic[email]
 opencv-python
 sqlalchemy
 asyncpg
-customtkinterc
+customtkinter
