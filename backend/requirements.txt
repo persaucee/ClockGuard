@@ -9,3 +9,8 @@ opencv-python
 sqlalchemy
 psycopg
 customtkinter
+keras-facenet
+tensorflow
+scipy
+numpy
+requests
