@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
 from app.models.User import Admin
 from app.schemas import APIResponse, LoginData, UserData
 from dependencies import get_current_user, get_db
@@ -66,7 +65,7 @@ async def login(form_data: LoginData,
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
