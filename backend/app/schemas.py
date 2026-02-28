@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
-from uuid import UUID
 from datetime import datetime
-from typing import Generic, TypeVar, Optional
+from typing import Generic, Optional, TypeVar
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 T = TypeVar("T")
 
@@ -20,12 +21,15 @@ class UserData(BaseModel):
     last_name: str
     company: Optional[str] = None
 
+#Employee Schemas
+
 class EmployeeBase(BaseModel):
     name: Optional[str] = None
     hourly_rate: Optional[float] = None
     email: Optional[EmailStr] = None
 
 class EmployeeCreate(EmployeeBase):
+    embedding: list[float] = Field(min_length=512, max_length=512)
     pass
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
@@ -37,3 +41,6 @@ class EmployeeResponse(EmployeeBase):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class VerifyRequest(BaseModel):
+    embedding: list[float] = Field(min_length=512, max_length=512)

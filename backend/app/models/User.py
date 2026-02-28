@@ -2,6 +2,7 @@ import uuid
 
 from app.database import Base
 from sqlalchemy import TIMESTAMP, Column, String, func, Float
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import UUID
 
 
@@ -23,5 +24,6 @@ class Employee(Base):
     name = Column(String(255), nullable=True)
     hourly_rate = Column(Float, nullable=True)
     email = Column(String(255), nullable=True)
+    embedding = Column(Vector(512))
     created_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),onupdate=func.now(),nullable=False)
