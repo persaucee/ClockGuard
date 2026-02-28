@@ -16,7 +16,7 @@ DB_NAME = os.getenv("DB_NAME")
 # Async DB Setup (sets up connection pooling and async session management)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-ASYNC_DB_URL = f"postgresql+psycopg://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+ASYNC_DB_URL = f"postgresql+asyncpg://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 async_engine = create_async_engine(
     ASYNC_DB_URL,
@@ -24,10 +24,7 @@ async_engine = create_async_engine(
     max_overflow=5,
     pool_pre_ping=False,
     pool_recycle=300,
-    echo=False,
-    connect_args={
-        "prepare_threshold": None
-    }
+    echo=False
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=async_engine)
