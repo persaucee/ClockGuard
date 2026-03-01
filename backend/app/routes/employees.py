@@ -88,11 +88,11 @@ async def verify(
     row = result.first()
     employee, similarity = row
 
-    if not employee or similarity < 0.90:
+    if not employee or similarity < 0.85:
         raise HTTPException(status_code=404, detail="No matching employee found")
 
     return {
-        "match": employee,
+        "match": {"name": employee.name},
         "similarity": float(similarity),
-        "verified": similarity > 0.90
-    }
+        "verified": similarity > 0.85
+    } 

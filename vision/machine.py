@@ -93,19 +93,51 @@ def run_camera_loop(mode="scanner", emp_data=None):
                         face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
                         samples = np.expand_dims(face_rgb, axis=0)
                         
-                        vector_512 = embedder.embeddings(samples)[0].tolist()
-                        
-                        # UI Feedback: Logged In!
-                        cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
-                        cv2.putText(frame, "LOGGED IN!", (x_start + 110, y_start + ROI_H // 2), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
-                        cv2.imshow('ClockGuard CV Hub', frame)
-                        
-                        # Freeze for 2 seconds so they can read it
-                        cv2.waitKey(2000) 
+                        raw_vector = embedder.embeddings(samples)[0]
+                        norm_vector = raw_vector / np.linalg.norm(raw_vector)
+                        vector_512 = norm_vector.tolist()
+                        #====================
+                        #now verify face embed, this needs to be changed in the future for payroll etc
+                        #====================
+                        print("\n[API] Verifying scanned face...")
+                        payload = {"embedding": vector_512} #this is whats send through the /verify endpoint
 
-                        print("\n[MOCK API] Sending Vector to /verify endpoint...")
-                        
+                        try:
+                            response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
+
+                            if response.status_code == 200:
+                                data = response.json()
+                                employee = data.get("match", {}).get("name", "Unknown")
+                                similarity = data.get("simlarity", 0.0)
+
+                                print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
+
+                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
+                                cv2.putText(frame, f"WELCOME, {emp_name.upper()}!", (x_start + 20, y_start + ROI_H // 2), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
+
+                            elif response.status_code == 404:
+                                print("[API] Face not recognized")
+
+                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 0, 255), 4)
+                                cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+
+                            else:
+                                #error 500 internal error
+                                print(f"[API] Server Error: {response.text}")
+                                cv2.putText(frame, "SERVER ERROR", (x_start + 90, y_start + ROI_H // 2), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+
+                        except requests.exceptions.ConnectionError:
+                            print("[API] Connection Failed")
+                            cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
+
+                        # Freeze for 1 second so they can read it
+                        cv2.imshow('Clockguard hub!', frame)
+                        cv2.waitKey(1000) 
+                       
                         #fix
                         start_Time = None 
                         break 
@@ -120,17 +152,22 @@ def run_camera_loop(mode="scanner", emp_data=None):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if time.time() - last_capture_time > 1.0:
+                            face_crop = roi_frame[y:y+h, x:x+w].copy()
+                            #white flash thing mimimm
                             cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 255), -1)
-                            
-                            face_crop = roi_frame[y:y+h, x:x+w]
+                            #cropping
                             face_160x160 = cv2.resize(face_crop, (160, 160))
+                            #greyscale
                             face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
+                            #sampels
                             samples = np.expand_dims(face_rgb, axis=0)
                             
-                            vector = embedder.embeddings(samples)[0]
-                            captured_vectors.append(vector)
+                            raw_vector = embedder.embeddings(samples)[0]
+                            norm_vector = raw_vector / np.linalg.norm(raw_vector)
+                            
+                            captured_vectors.append(norm_vector)
                             last_capture_time = time.time()
-                            print(f"Captured frame {len(captured_vectors)}/{MAX_SCANS}")
+                            print(f"Captured real face frame {len(captured_vectors)}/{MAX_SCANS}")
 
                         if len(captured_vectors) >= MAX_SCANS:
                             avg_vector = np.mean(captured_vectors, axis=0)
