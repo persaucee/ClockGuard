@@ -1,9 +1,10 @@
 import uuid
 
 from app.database import Base
-from sqlalchemy import TIMESTAMP, Column, String, func, Float
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import TIMESTAMP, Column, Enum, Float, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 
 class Admin(Base):
@@ -25,5 +26,38 @@ class Employee(Base):
     hourly_rate = Column(Float, nullable=True)
     email = Column(String(255), nullable=True)
     embedding = Column(Vector(512))
-    created_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),nullable=False)
-    updated_at = Column(TIMESTAMP(timezone=True),server_default=func.now(),onupdate=func.now(),nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    attendance_logs = relationship(
+        "AttendanceLog",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+
+class AttendanceLog(Base):
+    __tablename__ = "attendance_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    action = Column(
+        Enum(
+            "CHECK_IN",
+            "CHECK_OUT",
+            name="action_type",
+            schema="public",
+            create_type=False,
+        ),
+        nullable=False,
+    )
+    timestamp = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    employee = relationship("Employee", back_populates="attendance_logs")

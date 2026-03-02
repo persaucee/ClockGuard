@@ -1,8 +1,14 @@
 import uuid
 from typing import List
 
-from app.models.User import Employee
-from app.schemas import APIResponse, EmployeeCreate, EmployeeResponse, EmployeeUpdate, VerifyRequest
+from app.models.User import AttendanceLog, Employee
+from app.schemas import (
+    APIResponse,
+    EmployeeCreate,
+    EmployeeResponse,
+    EmployeeUpdate,
+    VerifyRequest,
+)
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
@@ -90,6 +96,13 @@ async def verify(
 
     if not employee or similarity < 0.85:
         raise HTTPException(status_code=404, detail="No matching employee found")
+    
+    attendance_log = AttendanceLog(
+    employee_id=employee.id,
+    action="CHECK_IN", # TODO: Determine action based on last log or request body
+)
+    db.add(attendance_log)
+    await db.commit()
 
     return {
         "match": {"name": employee.name},
