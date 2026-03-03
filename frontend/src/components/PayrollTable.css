@@ -1,0 +1,89 @@
+/* PayrollTable Styles */
+
+.payroll-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: var(--spacing-lg);
+}
+
+.payroll-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.payroll-table thead {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.payroll-table th {
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.payroll-table tbody tr {
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color var(--transition-fast);
+}
+
+.payroll-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.payroll-table tbody tr:hover {
+  background-color: var(--color-background-alt);
+}
+
+.payroll-table td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--color-text);
+  font-size: 0.9375rem;
+}
+
+.payroll-table td:nth-child(2),
+.payroll-table td:nth-child(3),
+.payroll-table td:nth-child(4) {
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+}
+
+.payroll-table td:nth-child(4) {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .payroll-table th,
+  .payroll-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.875rem;
+  }
+  
+  .payroll-table th {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .payroll-table-container {
+    margin-top: var(--spacing-md);
+  }
+  
+  .payroll-table th,
+  .payroll-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8125rem;
+  }
+  
+  .payroll-table th {
+    font-size: 0.6875rem;
+  }
+}
