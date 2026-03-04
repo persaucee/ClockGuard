@@ -96,10 +96,12 @@ async def verify(
 
     if not employee or similarity < 0.85:
         raise HTTPException(status_code=404, detail="No matching employee found")
+    elif request.action not in ["IN", "OUT"]:
+        raise HTTPException(status_code=400, detail="Invalid action. Must be 'IN' or 'OUT'.")
     
     attendance_log = AttendanceLog(
     employee_id=employee.id,
-    action="CHECK_IN", # TODO: Determine action based on last log or request body
+    action=request.action
 )
     db.add(attendance_log)
     await db.commit()

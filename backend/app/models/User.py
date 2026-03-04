@@ -15,8 +15,14 @@ class Admin(Base):
     password_hash = Column(String(60), nullable=False)
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    organization = relationship(
+        "Organization",
+        back_populates="admins"
+    )
 
 class Employee(Base):
     __tablename__ = "employees"
@@ -25,13 +31,37 @@ class Employee(Base):
     name = Column(String(255), nullable=True)
     hourly_rate = Column(Float, nullable=True)
     email = Column(String(255), nullable=True)
-    embedding = Column(Vector(512))
+    embedding = Column(Vector(512), nullable=False)
+    organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     attendance_logs = relationship(
         "AttendanceLog",
         back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+    organization = relationship(
+        "Organization",
+        back_populates="employees"
+    )
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    employees = relationship(
+        "Employee",
+        back_populates="organization",
+        cascade="all, delete-orphan"
+    )
+
+    admins = relationship(
+        "Admin",
+        back_populates="organization",
         cascade="all, delete-orphan"
     )
 
@@ -47,8 +77,8 @@ class AttendanceLog(Base):
     )
     action = Column(
         Enum(
-            "CHECK_IN",
-            "CHECK_OUT",
+            "IN",
+            "OUT",
             name="action_type",
             schema="public",
             create_type=False,
