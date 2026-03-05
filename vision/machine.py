@@ -12,7 +12,43 @@ BACKEND_URL = "http://localhost:8000"
 
 embedder = None
 face_cascade = None
-
+#testing this out i dont know if it will work
+class PasswordDialog(ctk.CTkToplevel):
+    def __init__(self, title="Kiosk Locked", text="Enter Admin Password to Exit:"):
+        super().__init__()
+        self.title(title)
+        self.geometry("350x200")
+        
+        # Center the popup on the screen
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - (350 // 2)
+        y = (self.winfo_screenheight() // 2) - (200 // 2)
+        self.geometry(f"+{x}+{y}")
+        
+        self.password = None
+        
+        ctk.CTkLabel(self, text=text, font=ctk.CTkFont(size=16)).pack(pady=(30, 10))
+        
+        # Here is where we use show="*" securely!
+        self.entry = ctk.CTkEntry(self, show="*", width=250)
+        self.entry.pack(pady=10)
+        self.entry.focus()
+        
+        # Bind the Enter key to submit
+        self.bind('<Return>', lambda event: self.submit())
+        
+        ctk.CTkButton(self, text="Submit", command=self.submit, width=250).pack(pady=15)
+        
+        # Make this popup block the rest of the app until it's closed
+        self.grab_set()
+        self.wait_window(self)
+        
+    def submit(self):
+        self.password = self.entry.get()
+        self.destroy()
+        
+    def get_input(self):
+        return self.password
 def load_ai():
     global embedder, face_cascade
     if embedder is None:
@@ -23,7 +59,7 @@ def load_ai():
 #===============
 #camera logic
 #================
-def run_camera_loop(mode="scanner", emp_data=None):
+def run_camera_loop(mode="scanner", emp_data=None, is_locked=False):
     emp_name = emp_data["name"] if emp_data else ""
     load_ai() 
 
@@ -208,9 +244,31 @@ def run_camera_loop(mode="scanner", emp_data=None):
 
         cv2.imshow('ClockGuard CV Hub', frame)
         
-        # admin leave will fix later
+        #lockscreen
         if cv2.waitKey(1) & 0xFF == ord('q'): 
-            break
+            if not is_locked:
+                print("[SYSTEM] Testing Mode: Exiting camera freely.")
+                break
+            else:
+                
+                print("[SYSTEM] Kiosk Locked: Requesting Admin override...")
+                
+                # start a password request
+                pwd_dialog = PasswordDialog()
+                entered_pwd = pwd_dialog.get_input()
+                
+                if entered_pwd:
+                    # Bounce the password against the backend API to verify!
+                    payload = {"username": "admin", "password": entered_pwd}
+                    try:
+                        resp = api_session.post(f"{BACKEND_URL}/auth/login", json=payload)
+                        if resp.status_code == 200:
+                            print("[API] Override Accepted. Returning to Hub.")
+                            break # Breaks the camera loop
+                        else:
+                            messagebox.showerror("Access Denied", "Incorrect Admin Password")
+                    except requests.exceptions.ConnectionError:
+                        messagebox.showerror("Error", "Could not connect to auth server.")
 
     capture.release()
     cv2.destroyAllWindows()
@@ -220,19 +278,28 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue") 
 
 class KioskHubApp(ctk.CTk):
-    def __init__(self):
+    def __init__(self, is_locked=False):
         super().__init__()
-        self.title("ClockGuard Kiosk System")
-        self.attributes("-fullscreen", True) 
-        self.bind("<Escape>", lambda e: self.attributes("-fullscreen", False)) 
-        
+        self.is_locked = is_locked
+        self.title("ClockGuard Scanner System")
+        #set lock mode
+        if self.is_locked:
+            self.attributes("-fullscreen", True)
+            self.protocol("WM_DELETE_WINDOW", self.disable_event)  #detects for the event delete window and disables that event
+            print("[SYSTEM] Booting in SECURE MODE")
+        else:
+            self.attributes("-fullscreen", True) 
+            self.bind("<Escape>", lambda e: self.attributes("-fullscreen", False))
+            print("[SYSTEM] Booting in DEV MODE")
+            
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
         
         self.current_frame = None
-        
-        #start screen 
         self.build_login_screen()
+
+    def disable_event(self):
+        pass
 
     def build_login_screen(self):
         if self.current_frame: self.current_frame.destroy()
@@ -336,14 +403,28 @@ class KioskHubApp(ctk.CTk):
         }
         
         self.withdraw() 
-        run_camera_loop(mode="register", emp_data=emp_data) 
+        run_camera_loop(mode="register", emp_data=emp_data, is_locked=self.is_locked)
         self.deiconify() 
 
     def open_scanner(self):
         self.withdraw() 
-        run_camera_loop(mode="scanner") 
+        run_camera_loop(mode="scanner", is_locked=self.is_locked)
         self.deiconify()
 
 if __name__ == "__main__":
-    app = KioskHubApp()
+    import tkinter as tk
+    
+    
+    root = tk.Tk()
+    root.withdraw()
+    
+    #ask for what boot node
+    enable_kiosk = messagebox.askyesno(
+        "Startup Configuration", 
+        "Boot in SECURE KIOSK mode?\n\n(Select 'No' for Windowed Testing Mode)"
+    )
+    root.destroy()
+    
+    # boot selected app
+    app = KioskHubApp(is_locked=enable_kiosk)
     app.mainloop()
