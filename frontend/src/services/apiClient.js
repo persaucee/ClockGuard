@@ -57,9 +57,25 @@ export const api = {
   // Auth endpoints
   auth: {
     login: async (credentials) => {
-      // TODO: Implement login endpoint
-      console.log('Login endpoint not yet implemented', credentials);
-      return { success: false, message: 'Not implemented' };
+      const url = `${API_BASE_URL}/auth/login`;
+      
+      const config = {
+        method: 'POST',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+        body: JSON.stringify(credentials),
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
+        throw new Error(errorData.message || 'Login failed');
+      }
+      
+      return await response.json();
     },
     logout: async () => {
       // TODO: Implement logout endpoint
