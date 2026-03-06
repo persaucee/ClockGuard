@@ -1,11 +1,12 @@
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from app.models.User import Admin
 from app.schemas import APIResponse, LoginData, UserData
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from jose import jwt
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/auth")
 
 # Configuration
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 LOGIN_SECRET = os.getenv("LOGIN_SECRET")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -29,7 +31,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode = data.copy()
-    to_encode.update({"exp": expire, "sub": data.get("sub")})
+    to_encode.update({"exp": expire, "sub": data.get("sub"), "type": "access"})
+    encoded_jwt = jwt.encode(to_encode, LOGIN_SECRET, algorithm="HS256")
+    return encoded_jwt
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode = data.copy()
+    to_encode.update({"exp": expire, "sub": data.get("sub"), "type": "refresh"})
     encoded_jwt = jwt.encode(to_encode, LOGIN_SECRET, algorithm="HS256")
     return encoded_jwt
 
@@ -56,20 +65,65 @@ async def login(form_data: LoginData,
         data={"sub": user.username},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
+    refresh_token = create_refresh_token(
+        data={"sub": user.username}
+    )
     response = APIResponse(
         success=True,
         message="Logged in successfully"
     )
     json_response = JSONResponse(response.model_dump())
     json_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False, #TODO: Set to true in production
+        samesite="strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
+        secure=False,  # TODO: Set to true in production
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
+
+@router.post("/refresh")
+async def refresh_token_endpoint(request: Request):
+
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token missing"
+        )
+    try:
+        payload = jwt.decode(refresh_token, LOGIN_SECRET, algorithms=["HS256"])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Invalid token")
+        username = payload.get("sub")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    new_access_token = create_access_token(
+        data={"sub": username}
+    )
+    response = JSONResponse({
+        "success": True,
+        "message": "Token refreshed"
+    })
+    response.set_cookie(
+        key="access_token",
+        value=new_access_token,
+        httponly=True,
+        secure=False,  # TODO: True in production
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+
+    return response
 
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
