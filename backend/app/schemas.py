@@ -27,6 +27,7 @@ class EmployeeBase(BaseModel):
     name: Optional[str] = None
     hourly_rate: Optional[float] = None
     email: Optional[EmailStr] = None
+    organization_id: UUID
 
 class EmployeeCreate(EmployeeBase):
     embedding: list[float] = Field(min_length=512, max_length=512)
@@ -38,9 +39,10 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeeResponse(EmployeeBase):
     id: UUID
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)
 
 class VerifyRequest(BaseModel):
     embedding: list[float] = Field(min_length=512, max_length=512)
+    action: Optional[str] = "IN"

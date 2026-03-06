@@ -1,8 +1,14 @@
 import uuid
 from typing import List
 
-from app.models.User import Employee
-from app.schemas import APIResponse, EmployeeCreate, EmployeeResponse, EmployeeUpdate, VerifyRequest
+from app.models.User import AttendanceLog, Employee
+from app.schemas import (
+    APIResponse,
+    EmployeeCreate,
+    EmployeeResponse,
+    EmployeeUpdate,
+    VerifyRequest,
+)
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
@@ -88,11 +94,20 @@ async def verify(
     row = result.first()
     employee, similarity = row
 
-    if not employee or similarity < 0.90:
+    if not employee or similarity < 0.85:
         raise HTTPException(status_code=404, detail="No matching employee found")
+    elif request.action not in ["IN", "OUT"]:
+        raise HTTPException(status_code=400, detail="Invalid action. Must be 'IN' or 'OUT'.")
+    
+    attendance_log = AttendanceLog(
+    employee_id=employee.id,
+    action=request.action
+)
+    db.add(attendance_log)
+    await db.commit()
 
     return {
-        "match": employee,
+        "match": {"name": employee.name},
         "similarity": float(similarity),
-        "verified": similarity > 0.90
-    }
+        "verified": similarity > 0.85
+    } 
