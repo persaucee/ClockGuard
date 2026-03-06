@@ -1,0 +1,129 @@
+/* Sidebar Component Styles - ClockGuard */
+
+.sidebar {
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  width: 250px;
+  min-height: calc(100vh - 73px);
+  padding: var(--spacing-lg) 0;
+}
+
+.sidebar-nav {
+  position: sticky;
+  top: 73px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-menu li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Sidebar Links */
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-xl);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all var(--transition-fast);
+  border-left: 3px solid transparent;
+}
+
+.sidebar-link:hover {
+  background-color: var(--color-background);
+  color: var(--color-primary);
+}
+
+/* Active Link State */
+.sidebar-link.active {
+  background-color: rgba(0, 127, 128, 0.08);
+  color: var(--color-primary);
+  border-left-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.sidebar-icon {
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+}
+
+.sidebar-label {
+  flex: 1;
+}
+
+/* Responsive Design */
+
+/* Tablet and below - Horizontal sidebar */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--spacing-md) var(--spacing-lg);
+  }
+
+  .sidebar-nav {
+    position: static;
+  }
+
+  .sidebar-menu {
+    display: flex;
+    gap: var(--spacing-sm);
+    overflow-x: auto;
+  }
+
+  .sidebar-menu li {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-link {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+  }
+
+  .sidebar-link.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--color-accent);
+  }
+
+  .sidebar-icon {
+    font-size: 1.125rem;
+  }
+
+  .sidebar-label {
+    font-size: 0.875rem;
+  }
+}
+
+/* Mobile - Icon only or compact */
+@media (max-width: 480px) {
+  .sidebar {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .sidebar-link {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm);
+  }
+
+  .sidebar-label {
+    font-size: 0.75rem;
+  }
+}
