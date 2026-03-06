@@ -2,7 +2,6 @@
 
 .payroll-table-container {
   width: 100%;
-  overflow-x: auto;
   margin-top: var(--spacing-lg);
 }
 
@@ -12,6 +11,7 @@
   background-color: var(--color-surface);
   border-radius: var(--radius-md);
   overflow: hidden;
+  table-layout: fixed;
 }
 
 .payroll-table thead {
@@ -20,13 +20,20 @@
 }
 
 .payroll-table th {
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 0.4rem 0.3rem;
   text-align: left;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
 }
+
+.payroll-table th:nth-child(1) { width: 18%; }
+.payroll-table th:nth-child(2) { width: 30%; }
+.payroll-table th:nth-child(3) { width: 13%; }
+.payroll-table th:nth-child(4) { width: 12%; }
+.payroll-table th:nth-child(5) { width: 15%; }
+.payroll-table th:nth-child(6) { width: 12%; text-align: center; }
 
 .payroll-table tbody tr {
   border-bottom: 1px solid var(--color-border);
@@ -42,21 +49,171 @@
 }
 
 .payroll-table td {
-  padding: var(--spacing-md) var(--spacing-lg);
+  padding: 0.5rem 0.3rem;
   color: var(--color-text);
+  font-size: 0.75rem;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.payroll-table td:nth-child(1),
+.payroll-table td:nth-child(2) {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.payroll-table td:nth-child(3),
+.payroll-table td:nth-child(4),
+.payroll-table td:nth-child(5) {
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+  font-size: 0.7rem;
+}
+
+.payroll-table td:nth-child(5) {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.payroll-table td:nth-child(6) {
+  text-align: center;
+}
+
+/* Edit Button */
+.edit-btn {
+  padding: 0.3rem 0.5rem;
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.65rem;
+  font-weight: 500;
+  transition: background-color var(--transition-fast);
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.edit-btn:hover {
+  background-color: var(--color-primary-dark, #0056b3);
+}
+
+.edit-btn:active {
+  transform: scale(0.98);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: var(--color-text);
+  font-size: 1.5rem;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--color-text);
+  font-weight: 500;
   font-size: 0.9375rem;
 }
 
-.payroll-table td:nth-child(2),
-.payroll-table td:nth-child(3),
-.payroll-table td:nth-child(4) {
-  font-family: 'Courier New', monospace;
-  font-weight: 500;
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  box-sizing: border-box;
 }
 
-.payroll-table td:nth-child(4) {
-  color: var(--color-primary);
-  font-weight: 600;
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+/* Error Message */
+.error-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.cancel-btn,
+.save-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.cancel-btn {
+  background-color: var(--color-background-alt);
+  color: var(--color-text);
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background-color: var(--color-border);
+}
+
+.save-btn {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: var(--color-primary-dark, #0056b3);
+}
+
+.cancel-btn:disabled,
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Responsive Design */

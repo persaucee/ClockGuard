@@ -101,6 +101,31 @@ export const api = {
       return [];
     },
   },
+  
+  // Employee endpoints
+  employees: {
+    update: async (employeeId, data) => {
+      const url = `${API_BASE_URL}/employees/${employeeId}`;
+      
+      const config = {
+        method: 'PUT',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update employee' }));
+        throw new Error(errorData.message || 'Failed to update employee');
+      }
+      
+      return await response.json();
+    },
+  },
 };
 
 /**
