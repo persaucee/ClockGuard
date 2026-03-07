@@ -144,7 +144,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False):
                             if response.status_code == 200:
                                 data = response.json()
                                 employee = data.get("match", {}).get("name", "Unknown")
-                                similarity = data.get("simlarity", 0.0)
+                                similarity = data.get("similarity", 0.0)
 
                                 print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
 
@@ -383,7 +383,7 @@ class KioskHubApp(ctk.CTk):
         # emial
         dialog_email = ctk.CTkInputDialog(text=f"Enter email for {emp_name}:", title="Register (2/3)")
         emp_email = dialog_email.get_input()
-        if not emp_email: return # Cancelled
+        if not emp_email: return # d
         
         # rate
         dialog_rate = ctk.CTkInputDialog(text="Enter hourly rate (e.g., 25.50):", title="Register (3/3)")
