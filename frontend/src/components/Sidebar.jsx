@@ -1,12 +1,3 @@
-/**
- * Sidebar Component - ClockGuard Admin Dashboard
- * 
- * Navigation sidebar with:
- * - Dashboard, Employees, Settings links
- * - Active page highlighting
- * - Responsive design
- */
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import './Sidebar.css';

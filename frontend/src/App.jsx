@@ -1,8 +1,3 @@
-/**
- * ClockGuard Admin Dashboard
- * Main App Component
- */
-
 import React from 'react';
 import AppRouter from './routes/AppRouter';
 import './styles/global.css';

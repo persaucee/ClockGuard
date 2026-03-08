@@ -1,35 +1,38 @@
-/**
- * EmployeesPage - Payroll Table (Scrum 33, Enhanced in Scrum 41)
- * 
- * Features:
- * - Navbar on top
- * - Sidebar navigation
- * - Payroll table displaying employee wage information
- * - Employee editing functionality (Scrum 41)
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './EmployeesPage.css';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import PayrollTable from '../components/PayrollTable';
-
-const initialMockEmployees = [
-  { id: 1, name: 'John Smith', email: 'john.smith@clockguard.com', wageRate: 25.00, totalHours: 160 },
-  { id: 2, name: 'Sarah Johnson', email: 'sarah.johnson@clockguard.com', wageRate: 30.50, totalHours: 152 },
-  { id: 3, name: 'Michael Chen', email: 'michael.chen@clockguard.com', wageRate: 22.75, totalHours: 168 },
-  { id: 4, name: 'Emily Rodriguez', email: 'emily.rodriguez@clockguard.com', wageRate: 28.00, totalHours: 145 },
-  { id: 5, name: 'David Kim', email: 'david.kim@clockguard.com', wageRate: 32.00, totalHours: 160 },
-];
+import { api } from '../services/apiClient';
 
 function EmployeesPage() {
-  const [employees, setEmployees] = useState(initialMockEmployees);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const data = await api.employees.getAll();
+        setEmployees(data);
+        setError(null);
+      } catch (err) {
+        setError(err.message || 'Failed to load employees');
+        console.error('Error fetching employees:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
 
   const handleEmployeeUpdate = (updatedEmployee) => {
     setEmployees(prevEmployees =>
       prevEmployees.map(emp =>
         emp.id === updatedEmployee.id
-          ? { ...emp, name: updatedEmployee.name, wageRate: updatedEmployee.hourly_rate }
+          ? { ...emp, name: updatedEmployee.name, hourly_rate: updatedEmployee.hourly_rate }
           : emp
       )
     );
@@ -43,10 +46,14 @@ function EmployeesPage() {
         <main className="page-content">
           <div className="content-container">
             <h1>Employees</h1>
-            <PayrollTable 
-              employees={employees} 
-              onEmployeeUpdate={handleEmployeeUpdate}
-            />
+            {loading && <p>Loading employees...</p>}
+            {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+            {!loading && !error && (
+              <PayrollTable 
+                employees={employees} 
+                onEmployeeUpdate={handleEmployeeUpdate}
+              />
+            )}
           </div>
         </main>
       </div>
