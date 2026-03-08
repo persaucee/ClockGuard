@@ -20,6 +20,7 @@ class UserData(BaseModel):
     first_name: str
     last_name: str
     company: Optional[str] = None
+    organization_id: UUID
 
 #Employee Schemas
 
@@ -27,11 +28,10 @@ class EmployeeBase(BaseModel):
     name: Optional[str] = None
     hourly_rate: Optional[float] = None
     email: Optional[EmailStr] = None
-    organization_id: UUID
 
 class EmployeeCreate(EmployeeBase):
     embedding: list[float] = Field(min_length=512, max_length=512)
-    pass
+
 class EmployeeUpdate(BaseModel):
     name: Optional[str] = None
     hourly_rate: Optional[float] = None
@@ -39,6 +39,7 @@ class EmployeeUpdate(BaseModel):
 
 class EmployeeResponse(EmployeeBase):
     id: UUID
+    organization_id: UUID
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     model_config = ConfigDict(from_attributes=True)

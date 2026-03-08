@@ -22,7 +22,11 @@ router = APIRouter(prefix="/employees")
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
 async def get_employees(current_user: dict = Depends(get_current_user), 
                         db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Employee))
+    result = await db.execute(
+        select(Employee).where(
+            Employee.organization_id == current_user.organization_id
+        )
+    )
     return APIResponse(
         success=True,
         data=result.scalars().all(),
@@ -35,7 +39,12 @@ async def edit_employee(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Employee).filter(Employee.id == employee_id))
+    result = await db.execute(
+        select(Employee).where(
+            Employee.id == employee_id,
+            Employee.organization_id == current_user.organization_id
+        )
+    )
     employee_record = result.scalars().first()
 
     if employee_record is None:
@@ -62,7 +71,9 @@ async def add_employee(
     db: AsyncSession = Depends(get_db),
 ):
     
-    employee_record = Employee(**employee.model_dump())
+    employee_data = employee.model_dump()
+    employee_data["organization_id"] = current_user.organization_id
+    employee_record = Employee(**employee_data)
     db.add(employee_record)
     await db.commit()
     await db.refresh(employee_record)
@@ -76,6 +87,7 @@ async def add_employee(
 @router.post("/verify")
 async def verify(
     request: VerifyRequest,
+    current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     input_vector = request.embedding
@@ -86,12 +98,15 @@ async def verify(
             Employee,
             (1 - (Employee.embedding.cosine_distance(input_vector))).label("similarity")
         )
+        .where(Employee.organization_id == current_user.organization_id)
         .order_by(Employee.embedding.cosine_distance(input_vector))
         .limit(1)
     )
 
     result = await db.execute(stmt)
     row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="No matching employee found")
     employee, similarity = row
 
     if not employee or similarity < 0.85:
@@ -107,7 +122,7 @@ async def verify(
     await db.commit()
 
     return {
-        "match": {"name": employee.name},
+        "match": {"employee_id": str(employee.id)},
         "similarity": float(similarity),
         "verified": similarity > 0.85
     } 
