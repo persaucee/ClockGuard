@@ -11,9 +11,10 @@ function PayrollTable({ employees, onEmployeeUpdate }) {
 
   const handleEditClick = (employee) => {
     setEditingEmployee(employee);
+    const rate = employee.wageRate || employee.hourly_rate || 0;
     setFormData({
       name: employee.name,
-      hourly_rate: employee.wageRate || employee.hourly_rate || '',
+      hourly_rate: Number(rate).toFixed(2),
     });
     setError(null);
     setIsModalOpen(true);
