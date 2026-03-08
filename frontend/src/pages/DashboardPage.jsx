@@ -1,13 +1,3 @@
-/**
- * DashboardPage - Basic Dashboard Shell (Scrum 11)
- * 
- * Features:
- * - Navbar on top
- * - Sidebar navigation on left
- * - Content area with card container
- * - Welcome message and placeholder text
- */
-
 import React from 'react';
 import './DashboardPage.css';
 import Navbar from '../components/Navbar';

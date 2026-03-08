@@ -1,14 +1,3 @@
-/**
- * LoginPage - Functional Login Form (Scrum 36)
- * 
- * Features:
- * - Username/password form inputs
- * - Integrated with FastAPI backend login endpoint
- * - JWT token stored in HTTP-only cookie
- * - Success: redirect to /dashboard
- * - Failure: display error message
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';

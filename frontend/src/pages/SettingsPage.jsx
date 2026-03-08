@@ -1,12 +1,3 @@
-/**
- * SettingsPage - Placeholder (Scrum 11)
- * 
- * Features:
- * - Navbar on top
- * - Sidebar navigation
- * - Content area with placeholder text
- */
-
 import React from 'react';
 import './SettingsPage.css';
 import Navbar from '../components/Navbar';
