@@ -59,7 +59,7 @@ def load_ai():
 #===============
 #camera logic
 #================
-def run_camera_loop(mode="scanner", emp_data=None, is_locked=False):
+def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
     load_ai() 
 
@@ -136,7 +136,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False):
                         #now verify face embed, this needs to be changed in the future for payroll etc
                         #====================
                         print("\n[API] Verifying scanned face...")
-                        payload = {"embedding": vector_512} #this is whats send through the /verify endpoint
+                        payload = {"embedding": vector_512, "organization_id": org_id } #this is whats send through the /verify endpoint
 
                         try:
                             response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
@@ -220,6 +220,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False):
                                 "name": emp_data["name"],
                                 "email": emp_data["email"],
                                 "hourly_rate": emp_data["hourly_rate"],
+                                "organization_id": org_id,
                                 "embedding": final_vector_list 
                             }
                             
@@ -343,6 +344,9 @@ class KioskHubApp(ctk.CTk):
             
             if response.status_code == 200:
                 print("[API] Login successful! Secure cookie saved to session.")
+                data = response.json()
+                self.current_admin = username
+                self.org_id = data.get("organization_id")
                 self.build_hub_screen() 
                 
             elif response.status_code == 401:
@@ -403,12 +407,12 @@ class KioskHubApp(ctk.CTk):
         }
         
         self.withdraw() 
-        run_camera_loop(mode="register", emp_data=emp_data, is_locked=self.is_locked)
+        run_camera_loop(mode="register", emp_data=emp_data, is_locked=self.is_locked,org_id=self.org_id)
         self.deiconify() 
 
     def open_scanner(self):
         self.withdraw() 
-        run_camera_loop(mode="scanner", is_locked=self.is_locked)
+        run_camera_loop(mode="scanner", is_locked=self.is_locked,org_id=self.org_id)
         self.deiconify()
 
 if __name__ == "__main__":
