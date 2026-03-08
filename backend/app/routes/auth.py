@@ -8,6 +8,7 @@ from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from jose import jwt
 from passlib.context import CryptContext
@@ -70,9 +71,15 @@ async def login(form_data: LoginData,
     )
     response = APIResponse(
         success=True,
+        data=UserData(
+            username=user.username, 
+            first_name=user.first_name, 
+            last_name=user.last_name, 
+            organization_id=user.organization_id
+        ),
         message="Logged in successfully"
     )
-    json_response = JSONResponse(response.model_dump())
+    json_response = JSONResponse(content=jsonable_encoder(response))
     json_response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -129,5 +136,10 @@ async def refresh_token_endpoint(request: Request):
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     return APIResponse(
         success=True, 
-        data=UserData(username=current_user.username, first_name=current_user.first_name, last_name=current_user.last_name),
+        data=UserData(
+            username=current_user.username, 
+            first_name=current_user.first_name, 
+            last_name=current_user.last_name, 
+            organization_id=current_user.organization_id
+        ),
         message="User info retrieved")
