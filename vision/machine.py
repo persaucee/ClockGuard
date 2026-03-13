@@ -29,7 +29,7 @@ class PasswordDialog(ctk.CTkToplevel):
         
         ctk.CTkLabel(self, text=text, font=ctk.CTkFont(size=16)).pack(pady=(30, 10))
         
-        # Here is where we use show="*" securely!
+     
         self.entry = ctk.CTkEntry(self, show="*", width=250)
         self.entry.pack(pady=10)
         self.entry.focus()
@@ -55,6 +55,7 @@ def load_ai():
         print("\n[SYSTEM] Loading classifier")
         embedder = FaceNet()
         face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        liveness_net = cv2.dnn.readNetFromONNX("2.7_80x80_MiniFASNetV2.onnx")
         print("[SYSTEM] Done Loading\n")
 #===============
 #camera logic
