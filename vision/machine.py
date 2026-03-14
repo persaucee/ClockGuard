@@ -67,12 +67,18 @@ def check_liveness(frame, x,y,w,h):
     center_x, center_y = x + w//2, y + h//2 #center of the detected face
     new_w, new_h = int(w * scale), int(h * scale) #new dimensions
 
+    start_x = max(0, center_x-new_w//2)
+    start_y = max(0, center_y -new_h//2)
+    end_x = min(frame.shape[1], center_x + new_w//2)
+    end_y = min(frame.shape[0], center_y + new_h//2)
 
+    face_crop = frame[start_y:end_y, start_x:end_x]
 
-
-
-
-
+    if face_crop.size == 0:
+        return False, 0.0
+    blob = cv2.dnn.blobFromImage(face_crop, scalefactor=1.0, size=(80, 80), mean=(0, 0, 0), swapRB=False, crop=False)
+    liveness_net.setInput(blob)
+    preds = liveness_net.forward()
 
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
