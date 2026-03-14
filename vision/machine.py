@@ -50,7 +50,7 @@ class PasswordDialog(ctk.CTkToplevel):
     def get_input(self):
         return self.password
 def load_ai():
-    global embedder, face_cascade
+    global embedder, face_cascade, liveness_net
     if embedder is None:
         print("\n[SYSTEM] Loading classifier")
         embedder = FaceNet()
@@ -60,6 +60,20 @@ def load_ai():
 #===============
 #camera logic
 #================
+# This is the antispoofer with lightweight MiniFASNetV2, lightweight CNN
+
+def check_liveness(frame, x,y,w,h):
+    scale = 2.7 #this scales to 80x80 from the face crop
+    center_x, center_y = x + w//2, y + h//2 #center of the detected face
+    new_w, new_h = int(w * scale), int(h * scale) #new dimensions
+
+
+
+
+
+
+
+
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
     load_ai() 
