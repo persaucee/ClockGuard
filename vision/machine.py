@@ -79,6 +79,13 @@ def check_liveness(frame, x,y,w,h):
     blob = cv2.dnn.blobFromImage(face_crop, scalefactor=1.0, size=(80, 80), mean=(0, 0, 0), swapRB=False, crop=False)
     liveness_net.setInput(blob)
     preds = liveness_net.forward()
+    label_index = np.argmax(preds)
+
+    conf= preds[0][label_index]
+
+    #80% confidence threshold for liveness
+    is_live = label_index == 2 and conf > 0.80
+    return is_live, conf
 
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
