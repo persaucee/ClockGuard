@@ -152,6 +152,16 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                 else:
                     # Scanner Mode
                     if mode == "scanner":
+                        
+                        is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                        if not is_live:
+                            cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                            cv2.imshow('ClockGuard CV Hub', frame)
+                            cv2.waitKey(2000)
+                            start_Time = None
+                            break
+
                         face_crop = roi_frame[y:y+h, x:x+w]
                         face_160x160 = cv2.resize(face_crop, (160, 160))
                         face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
@@ -216,6 +226,15 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if time.time() - last_capture_time > 1.0:
+                            is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                            if not is_live:
+                                print("[SYSTEM] Liveness not detected")
+                                cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                                cv2.imshow('ClockGuard CV Hub', frame)
+                                cv2.waitKey(2000)
+                                continue
+                            
                             face_crop = roi_frame[y:y+h, x:x+w].copy()
                             #white flash thing mimimm
                             cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 255), -1)
