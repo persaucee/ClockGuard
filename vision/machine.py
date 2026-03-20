@@ -5,6 +5,7 @@ import time
 import numpy as np
 from keras_facenet import FaceNet
 import requests 
+import threading
 
 
 api_session = requests.Session()
@@ -89,8 +90,6 @@ def check_liveness(frame, x,y,w,h):
 
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
-    load_ai() 
-
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
@@ -175,39 +174,43 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                         #====================
                         print("\n[API] Verifying scanned face...")
                         payload = {"embedding": vector_512, "organization_id": org_id } #this is whats send through the /verify endpoint
+                        def verify_backend():
 
-                        try:
-                            response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
+                            try:
+                                response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
 
-                            if response.status_code == 200:
-                                data = response.json()
-                                employee = data.get("match", {}).get("name", "Unknown")
-                                similarity = data.get("similarity", 0.0)
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    employee = data.get("match", {}).get("name", "Unknown")
+                                    similarity = data.get("similarity", 0.0)
 
-                                print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
+                                    print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
 
-                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
-                                cv2.putText(frame, f"WELCOME, {emp_name.upper()}!", (x_start + 20, y_start + ROI_H // 2), 
+                                    cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
+                                    cv2.putText(frame, f"WELCOME, {emp_name.upper()}!", (x_start + 20, y_start + ROI_H // 2), 
                                             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
 
-                            elif response.status_code == 404:
-                                print("[API] Face not recognized")
+                                elif response.status_code == 404:
+                                    print("[API] Face not recognized")
 
-                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 0, 255), 4)
-                                cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
+                                    cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 0, 255), 4)
+                                    cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
+                                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
 
-                            else:
-                                #error 500 internal error
-                                print(f"[API] Server Error: {response.text}")
-                                cv2.putText(frame, "SERVER ERROR", (x_start + 90, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                                else:
+                                    #error 500 internal error
+                                    print(f"[API] Server Error: {response.text}")
+                                    cv2.putText(frame, "SERVER ERROR", (x_start + 90, y_start + ROI_H // 2), 
+                                                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
 
-                        except requests.exceptions.ConnectionError:
-                            print("[API] Connection Failed")
-                            cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
-
+                            except requests.exceptions.ConnectionError:
+                                print("[API] Connection Failed")
+                                cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
+                        threading.Thread(target=verify_backend).start()
+                        cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
+                        cv2.putText(frame, "PROCESSING...", (x_start + 80, y_start + ROI_H // 2), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
                         # Freeze for 1 second so they can read it
                         cv2.imshow('Clockguard hub!', frame)
                         cv2.waitKey(1000) 
@@ -328,6 +331,8 @@ ctk.set_default_color_theme("blue")
 class KioskHubApp(ctk.CTk):
     def __init__(self, is_locked=False):
         super().__init__()
+        print("[SYSTEM] loading ai models")
+        load_ai()
         self.is_locked = is_locked
         self.title("ClockGuard Scanner System")
         #set lock mode
