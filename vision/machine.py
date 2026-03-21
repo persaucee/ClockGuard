@@ -51,12 +51,12 @@ class PasswordDialog(ctk.CTkToplevel):
     def get_input(self):
         return self.password
 def load_ai():
-    global embedder, face_cascade, liveness_net
+    global embedder, face_net_dnn, liveness_net
     if embedder is None:
         print("\n[SYSTEM] Loading classifier")
         embedder = FaceNet()
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-        liveness_net = cv2.dnn.readNetFromONNX("2.7_80x80_MiniFASNetV2.onnx")
+        face_net_dnn = cv2.dnn.readNetFromCaffe("./models/deploy.prototxt", "./models/res10_300x300_ssd_iter_140000.caffemodel")
+        liveness_net = cv2.dnn.readNetFromONNX("./models/2.7_80x80_MiniFASNetV2.onnx")
         print("[SYSTEM] Done Loading\n")
 #===============
 #camera logic
