@@ -116,12 +116,30 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
         if not ret: break
 
         roi_frame = frame[y_start:y_start+ROI_H, x_start:x_start+ROI_W]
-        gray_roi = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2GRAY)
+        (h, w) = roi_frame.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(roi_frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+        face_net_dnn.setInput(blob)
+        detections = face_net_dnn.forward()
+        faces = []
+        match = None
+        max_area = 0
+        for i in range(0, detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > 0.60:
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (x, y, x1, y1) = box.astype("int")
+                fw= x1 - x
+                fh = y1 - y
+                if fw > 0 and fh > 0:
+                    area= fw * fh
+                    if area > max_area:
+                        max_area = area
+                        match = (x,y,fw,fh)
 
-        faces = face_cascade.detectMultiScale(
-            gray_roi, scaleFactor=1.1, minNeighbors=12, minSize=(200, 200)
-        )
-
+        if match is not None:
+            faces = [match]
+        else: 
+            faces = []
         cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (192, 192, 192), 2)
         
         header_text = f"Registering: {emp_name}" if mode == "register" else "Live Scanner: Please Align Face"
