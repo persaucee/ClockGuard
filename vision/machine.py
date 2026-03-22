@@ -85,7 +85,7 @@ def check_liveness(frame, x,y,w,h):
     conf= preds[0][label_index]
 
     #80% confidence threshold for liveness
-    is_live = label_index == 2 and conf > 0.80
+    is_live = label_index == 2 and conf > 0.50
     return is_live, conf
 
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
@@ -128,13 +128,16 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
             if confidence > 0.60:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (x, y, x1, y1) = box.astype("int")
+                rel_x = x - x_start
+                rel_y = y - y_start
                 fw= x1 - x
                 fh = y1 - y
-                if fw > 0 and fh > 0:
-                    area= fw * fh
-                    if area > max_area:
+                
+                if rel_x > -50 and rel_y > -50 and rel_x + fw < ROI_W +50 and rel_y + fh < ROI_H + 50:
+                   area = fw * fh
+                   if area > max_area:
                         max_area = area
-                        match = (x,y,fw,fh)
+                        match = (rel_x, rel_y, fw, fh) 
 
         if match is not None:
             faces = [match]
@@ -172,8 +175,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                         
                         is_live, conf = check_liveness(roi_frame, x, y, w, h)
                         if not is_live:
-                            cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                            print(f"[DEBUG LIVENESS] Class: {2} | Confidence: {conf:.2f}")
                             cv2.imshow('ClockGuard CV Hub', frame)
                             cv2.waitKey(2000)
                             start_Time = None
