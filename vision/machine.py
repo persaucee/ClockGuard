@@ -80,14 +80,18 @@ def check_liveness(frame, x,y,w,h):
     blob = cv2.dnn.blobFromImage(face_crop, scalefactor=1.0, size=(80, 80), mean=(0, 0, 0), swapRB=False, crop=False)
     liveness_net.setInput(blob)
     preds = liveness_net.forward()
-    label_index = np.argmax(preds)
+    raw_scores = preds[0]
+    exp_scores = np.exp(raw_scores - np.max(raw_scores))
+    softmax_scores = exp_scores / np.sum(exp_scores)
+    
+    label_index = np.argmax(softmax_scores)
+    conf = softmax_scores[label_index]
 
-    conf= preds[0][label_index]
-
-    #80% confidence threshold for liveness
-    is_live = label_index == 2 and conf > 0.50
-    return is_live, conf
-
+    # MiniFASNetV2 uses Class 1 for Real Faces!
+    is_live = (label_index == 1) and (conf > 0.50)
+    
+    # We now return the actual label_index so we can debug properly
+    return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
     capture = cv2.VideoCapture(0)
@@ -116,8 +120,8 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
         if not ret: break
 
         roi_frame = frame[y_start:y_start+ROI_H, x_start:x_start+ROI_W]
-        (h, w) = roi_frame.shape[:2]
-        blob = cv2.dnn.blobFromImage(cv2.resize(roi_frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+        (h, w) = frame.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
         face_net_dnn.setInput(blob)
         detections = face_net_dnn.forward()
         faces = []
