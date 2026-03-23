@@ -2,7 +2,7 @@ import uuid
 
 from app.database import Base
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import TIMESTAMP, Column, Enum, Float, ForeignKey, String, func
+from sqlalchemy import TIMESTAMP, Boolean, Column, Enum, Float, ForeignKey, String, func, Date, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -51,6 +51,8 @@ class Organization(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255))
+    default_open_time = Column(Time, nullable=True)
+    default_close_time = Column(Time, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     employees = relationship(
@@ -91,3 +93,22 @@ class AttendanceLog(Base):
         nullable=False,
     )
     employee = relationship("Employee", back_populates="attendance_logs")
+
+class PayrollSession(Base):
+    __tablename__ = "payroll_sessions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
+    employee_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("employees.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    shift_date = Column(Date, nullable=False)
+    clock_in_time = Column(TIMESTAMP(timezone=True), nullable=False)
+    clock_out_time = Column(TIMESTAMP(timezone=True), nullable=False)
+    total_hours = Column(Float, nullable=False)
+    total_pay = Column(Float, nullable=False)
+    requires_admin_review = Column(Boolean, nullable=False, server_default="false")
+
+    employee = relationship("Employee", back_populates="payroll_sessions")

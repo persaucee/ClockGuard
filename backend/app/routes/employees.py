@@ -1,7 +1,10 @@
 import uuid
 from typing import List
+import datetime
 
-from app.models.User import AttendanceLog, Employee
+from fastapi.responses import JSONResponse
+
+from app.models.User import AttendanceLog, Employee, PayrollSession
 from app.schemas import (
     APIResponse,
     EmployeeCreate,
@@ -48,7 +51,13 @@ async def edit_employee(
     employee_record = result.scalars().first()
 
     if employee_record is None:
-        return APIResponse(success=False, message="Employee not found")
+        return JSONResponse(
+            status_code=404,
+            content=APIResponse(
+                success=False,
+                message="Employee not found"
+            ).model_dump()
+        )
 
     update_data = employee.dict(exclude_unset=True)
 
@@ -106,23 +115,94 @@ async def verify(
     result = await db.execute(stmt)
     row = result.first()
     if not row:
-        raise HTTPException(status_code=404, detail="No matching employee found")
+        return JSONResponse(
+            status_code=404,
+            content=APIResponse(
+                success=False,
+                message="No matching employee found"
+            ).model_dump()
+        )
     employee, similarity = row
 
     if not employee or similarity < 0.85:
-        raise HTTPException(status_code=404, detail="No matching employee found")
-    elif request.action not in ["IN", "OUT"]:
-        raise HTTPException(status_code=400, detail="Invalid action. Must be 'IN' or 'OUT'.")
-    
+        return JSONResponse(
+            status_code=404,
+            content=APIResponse(
+                success=False,
+                message="No matching employee found"
+            ).model_dump()
+        )
+
+    # Determine IN/OUT from last log
+    last_log_result = await db.execute(
+        select(AttendanceLog)
+        .where(AttendanceLog.employee_id == employee.id)
+        .order_by(AttendanceLog.timestamp.desc())
+        .limit(1)
+    )
+    last_log = last_log_result.scalars().first()
+
+    action = "OUT" if (last_log and last_log.action == "IN") else "IN"
     attendance_log = AttendanceLog(
-    employee_id=employee.id,
-    action=request.action
-)
+        employee_id=employee.id,
+        action=action
+    )
     db.add(attendance_log)
+    await db.flush()
+
+    payroll_session = None
+
+    if action == "OUT":
+        clock_in_result = await db.execute(
+            select(AttendanceLog)
+            .where(
+                AttendanceLog.employee_id == employee.id,
+                AttendanceLog.action == "IN",
+            )
+            .order_by(AttendanceLog.timestamp.desc())
+            .limit(1)
+        )
+        clock_in_log = clock_in_result.scalars().first()
+
+        if clock_in_log:
+            clock_in_time = clock_in_log.timestamp
+            clock_out_time = attendance_log.timestamp
+
+            # Fallback: if DB hasn't populated the timestamp yet, use now()
+            if clock_out_time is None:
+                from datetime import timezone
+                clock_out_time = datetime.now(tz=timezone.utc)
+
+            duration_seconds = (clock_out_time - clock_in_time).total_seconds()
+            total_hours = duration_seconds / 3600
+            hourly_rate = employee.hourly_rate or 0.0
+            total_pay = total_hours * hourly_rate
+            
+            payroll_session = PayrollSession(
+                employee_id=employee.id,
+                shift_date=clock_in_time.date(),
+                clock_in_time=clock_in_time,
+                clock_out_time=clock_out_time,
+                total_hours=round(total_hours, 4),
+                total_pay=round(total_pay, 2),
+            )
+            db.add(payroll_session)
+
     await db.commit()
 
-    return {
+    response_data = {
         "match": {"employee_id": str(employee.id)},
         "similarity": float(similarity),
-        "verified": similarity > 0.85
-    } 
+        "verified": similarity > 0.85,
+        "action": action,
+    }
+    if payroll_session:
+        response_data["payroll_session"] = {
+            "shift_date": str(payroll_session.shift_date),
+            "clock_in_time": str(payroll_session.clock_in_time),
+            "clock_out_time": str(payroll_session.clock_out_time),
+            "total_hours": payroll_session.total_hours,
+            "total_pay": payroll_session.total_pay,
+        }
+
+    return response_data
