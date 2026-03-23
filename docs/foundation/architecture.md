@@ -5,7 +5,8 @@
 ---
 
 ## System Diagram
-![System Diagram](./assets/diagrams/system_flow.png "System Diagram")
+<img width="681" height="463" alt="system_flow" src="https://github.com/user-attachments/assets/95277ef6-f58d-47ac-b203-935adbc54885" />
+
 ## Components
 | **Client** | Python, OpenCV, ResNet V1 | MiniFASNetV2 |
 | **Backend** | FastAPI, Uvicorn | REST API |
