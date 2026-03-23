@@ -5,8 +5,9 @@
 ---
 
 ## System Diagram
+```
 ![System Diagram](/docs/assets/diagrams/system_flow.png "System Diagram")
-
+```markdown
 ## Components
 | **Client** | Python, OpenCV, ResNet V1 | MiniFASNetV2 |
 | **Backend** | FastAPI, Uvicorn | REST API |
