@@ -87,10 +87,9 @@ def check_liveness(frame, x,y,w,h):
     label_index = np.argmax(softmax_scores)
     conf = softmax_scores[label_index]
 
-    # MiniFASNetV2 uses Class 1 for Real Faces!
-    is_live = (label_index == 1) and (conf > 0.50)
+   #if label index is one then its a real face
+    is_live = (label_index == 1) and (conf > 0.60)
     
-    # We now return the actual label_index so we can debug properly
     return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
@@ -177,9 +176,9 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                     # Scanner Mode
                     if mode == "scanner":
                         
-                        is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                        is_live, conf, label_index = check_liveness(roi_frame, x, y, w, h)
                         if not is_live:
-                            print(f"[DEBUG LIVENESS] Class: {2} | Confidence: {conf:.2f}")
+                            print(f"[DEBUG LIVENESS] Class: {label_index} | Confidence: {conf:.2f}")
                             cv2.imshow('ClockGuard CV Hub', frame)
                             cv2.waitKey(2000)
                             start_Time = None
