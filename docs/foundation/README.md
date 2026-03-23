@@ -31,3 +31,5 @@ ClockGuard stores 0 images
 
 
 Created By: Dave Persaud (FOUNDER), Zachary Fernandez (FOUNDER), Andrew Yastangacal (BACKEND ENGINEER), Sabeeh Qureshi (FRONTEND DEVELOPER), and Roheemat Adebiyi (BACKEND ENGINEER)
+
+Any Questions Please Contact dbp@njit.edu
