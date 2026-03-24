@@ -49,11 +49,37 @@ export const api = {
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'Login failed' }));
-        throw new Error(errorData.message || 'Login failed');
+        throw new Error(errorData.message || errorData.detail || 'Login failed');
       }
       
       return await response.json();
     },
+
+
+    verify2FA: async (temp_token, code) => {
+      const url = `${API_BASE_URL}/auth/verify-2fa`;
+
+      const config = {
+        method: 'POST',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ temp_token, code }),
+      };
+
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: '2FA verification failed' }));
+        throw new Error(errorData.message || errorData.detail || '2FA verification failed');
+      }
+
+      return await response.json();
+    },
+
+
+
     logout: async () => {
       console.log('Logout endpoint not yet implemented');
       return { success: false, message: 'Not implemented' };

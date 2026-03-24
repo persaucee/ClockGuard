@@ -2,7 +2,7 @@ import uuid
 
 from app.database import Base
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import TIMESTAMP, Boolean, Column, Enum, Float, ForeignKey, String, func, Date, Time
+from sqlalchemy import TIMESTAMP, Boolean, Column, Enum, Float, ForeignKey, String, func, Date, Time, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -10,9 +10,14 @@ from sqlalchemy.orm import relationship
 class Admin(Base):
     __tablename__ = "admins"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, index=True)
     username = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(60), nullable=False)
+
+    # Two-Factor Authentication fields
+    two_factor_enabled = Column(Boolean, nullable=False, server_default="false")
+    two_factor_secret = Column(String(255), nullable=True)
+
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     organization_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
@@ -38,6 +43,11 @@ class Employee(Base):
 
     attendance_logs = relationship(
         "AttendanceLog",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
+    payroll_sessions = relationship(
+        "PayrollSession",
         back_populates="employee",
         cascade="all, delete-orphan"
     )

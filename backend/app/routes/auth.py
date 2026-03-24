@@ -3,7 +3,25 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from app.models.User import Admin
-from app.schemas import APIResponse, LoginData, UserData
+
+from app.schemas import (
+    APIResponse,
+    LoginData,
+    UserData,
+    LoginResponseData,
+    Verify2FARequest,
+    TwoFactorSetupResponse,
+    TwoFactorCodeRequest,
+)
+
+from app.security.two_factor import (
+    create_temp_2fa_token,
+    decode_temp_2fa_token,
+    generate_totp_secret,
+    get_totp_uri,
+    verify_totp_code,
+)
+
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -61,6 +79,19 @@ async def login(form_data: LoginData,
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username and/or password"
         )
+
+    if user.two_factor_enabled:
+        temp_token = create_temp_2fa_token(user.username)
+        response = APIResponse(
+            success=True,
+            data=LoginResponseData(
+                two_factor_required=True,
+                temp_token=temp_token
+            ),
+            message="Two-factor authentication required"
+        )
+        return JSONResponse(content=jsonable_encoder(response))
+        
     
     access_token = create_access_token(
         data={"sub": user.username},
@@ -71,11 +102,12 @@ async def login(form_data: LoginData,
     )
     response = APIResponse(
         success=True,
-        data=UserData(
-            username=user.username, 
-            first_name=user.first_name, 
-            last_name=user.last_name, 
-            organization_id=user.organization_id
+        data=LoginResponseData(
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            organization_id=user.organization_id,
+            two_factor_required=False
         ),
         message="Logged in successfully"
     )
@@ -97,6 +129,82 @@ async def login(form_data: LoginData,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
+
+
+@router.post("/verify-2fa")
+async def verify_2fa(
+    request_data: Verify2FARequest,
+    db: AsyncSession = Depends(get_db)
+):
+    username = decode_temp_2fa_token(request_data.temp_token)
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired temporary token"
+        )
+
+    result = await db.execute(
+        select(Admin).filter(Admin.username == username)
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    if not user.two_factor_enabled or not user.two_factor_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Two-factor authentication is not enabled for this account"
+        )
+
+    valid_code = verify_totp_code(user.two_factor_secret, request_data.code)
+    if not valid_code:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication code"
+        )
+
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": user.username}
+    )
+
+    response = APIResponse(
+        success=True,
+        data=UserData(
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            organization_id=user.organization_id
+        ),
+        message="Logged in successfully"
+    )
+
+    json_response = JSONResponse(content=jsonable_encoder(response))
+    json_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    json_response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return json_response
+
 
 @router.post("/refresh")
 async def refresh_token_endpoint(request: Request):
@@ -143,3 +251,54 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
             organization_id=current_user.organization_id
         ),
         message="User info retrieved")
+
+
+@router.post("/2fa/setup/initiate")
+async def initiate_2fa_setup(
+    current_user: Admin = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    secret = generate_totp_secret()
+    current_user.two_factor_secret = secret
+    current_user.two_factor_enabled = False
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return APIResponse(
+        success=True,
+        data=TwoFactorSetupResponse(
+            secret=secret,
+            otpauth_url=get_totp_uri(secret, current_user.username)
+        ),
+        message="Two-factor setup initiated"
+    )
+
+
+@router.post("/2fa/setup/confirm")
+async def confirm_2fa_setup(
+    request_data: TwoFactorCodeRequest,
+    current_user: Admin = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if not current_user.two_factor_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Two-factor setup has not been initiated"
+        )
+
+    valid_code = verify_totp_code(current_user.two_factor_secret, request_data.code)
+    if not valid_code:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication code"
+        )
+
+    current_user.two_factor_enabled = True
+    await db.commit()
+    await db.refresh(current_user)
+
+    return APIResponse(
+        success=True,
+        message="Two-factor authentication enabled successfully"
+    )
