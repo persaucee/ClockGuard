@@ -109,7 +109,7 @@ async def verify(
         raise HTTPException(status_code=404, detail="No matching employee found")
     employee, similarity = row
 
-    if not employee or similarity < 0.85:
+    if not employee or similarity < 0.80:
         raise HTTPException(status_code=404, detail="No matching employee found")
     elif request.action not in ["IN", "OUT"]:
         raise HTTPException(status_code=400, detail="Invalid action. Must be 'IN' or 'OUT'.")
@@ -124,5 +124,5 @@ async def verify(
     return {
         "match": {"employee_id": str(employee.id)},
         "similarity": float(similarity),
-        "verified": similarity > 0.85
+        "verified": similarity > 0.80
     } 

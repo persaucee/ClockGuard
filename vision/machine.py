@@ -175,15 +175,24 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                 else:
                     # Scanner Mode
                     if mode == "scanner":
-                        
                         is_live, conf, label_index = check_liveness(roi_frame, x, y, w, h)
                         if not is_live:
-                            print(f"[DEBUG LIVENESS] Class: {label_index} | Confidence: {conf:.2f}")
+                            print(f"[DEBUG LIVENESS] Spoof Detected - Class: {label_index} | Confidence: {conf:.2f}")
+                            cv2.putText(frame, "LIVENESS FAILED", (x_start + 80, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
                             cv2.imshow('ClockGuard CV Hub', frame)
-                            cv2.waitKey(2000)
+                            cv2.waitKey(1500)
                             start_Time = None
                             break
 
+                        # procccesing screen
+                        cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 0), 2)
+                        cv2.putText(frame, "VERIFYING BIOMETRICS...", (x_start + 20, y_start + ROI_H // 2), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+                        cv2.imshow('ClockGuard CV Hub', frame)
+                        cv2.waitKey(10) # force the screen to update
+
+                        # evaluate vector
                         face_crop = roi_frame[y:y+h, x:x+w]
                         face_160x160 = cv2.resize(face_crop, (160, 160))
                         face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
@@ -192,56 +201,49 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                         raw_vector = embedder.embeddings(samples)[0]
                         norm_vector = raw_vector / np.linalg.norm(raw_vector)
                         vector_512 = norm_vector.tolist()
-                        #====================
-                        #now verify face embed, this needs to be changed in the future for payroll etc
-                        #====================
+                        
                         print("\n[API] Verifying scanned face...")
-                        payload = {"embedding": vector_512, "organization_id": org_id } #this is whats send through the /verify endpoint
-                        def verify_backend():
+                        payload = {"embedding": vector_512, "organization_id": org_id }
+                        
+                        # api call
+                        try:
+                            response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
 
-                            try:
-                                response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
+                            if response.status_code == 200:
+                                data = response.json()
+                                employee = data.get("match", {}).get("name", "Unknown")
+                                similarity = data.get("similarity", 0.0)
+                                # 200 green screen
+                                overlay = frame.copy()
+                                cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 255, 0), -1)
+                                cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame) # 30% transparent green tint
+                                
+                                cv2.putText(frame, f"WELCOME, {employee.upper()}!", (x_start - 30, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                                print(f"[API] Match found: {employee}, similarity: {similarity:.2f}")
 
-                                if response.status_code == 200:
-                                    data = response.json()
-                                    employee = data.get("match", {}).get("name", "Unknown")
-                                    similarity = data.get("similarity", 0.0)
+                            elif response.status_code == 404:
+                                # 404 red screen
+                                data = response.json()
+                                overlay = frame.copy()
+                                similarity = data.get("similarity", 0.0)
+                                cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 255), -1)
+                                cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame) # 
+                                
+                                cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
+                                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                                print(f"[API] Face not recognized, similarity: {similarity:.2f}")
 
-                                    print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
+                        except requests.exceptions.ConnectionError:
+                            cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
 
-                                    cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
-                                    cv2.putText(frame, f"WELCOME, {emp_name.upper()}!", (x_start + 20, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
-
-                                elif response.status_code == 404:
-                                    print("[API] Face not recognized")
-
-                                    cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 0, 255), 4)
-                                    cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
-                                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-
-                                else:
-                                    #error 500 internal error
-                                    print(f"[API] Server Error: {response.text}")
-                                    cv2.putText(frame, "SERVER ERROR", (x_start + 90, y_start + ROI_H // 2), 
-                                                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
-
-                            except requests.exceptions.ConnectionError:
-                                print("[API] Connection Failed")
-                                cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
-                        threading.Thread(target=verify_backend).start()
-                        cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
-                        cv2.putText(frame, "PROCESSING...", (x_start + 80, y_start + ROI_H // 2), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
-                        # Freeze for 1 second so they can read it
-                        cv2.imshow('Clockguard hub!', frame)
-                        cv2.waitKey(1000) 
+                        # show in same window for 2 seconds
+                        cv2.imshow('ClockGuard CV Hub', frame)
+                        cv2.waitKey(2000) 
                        
-                        #fix
                         start_Time = None 
-                        break 
-
+                        break
                     # Registration
                     elif mode == "register":
                         cv2.putText(frame, f"Capturing {len(captured_vectors)}/5...", 
