@@ -2,8 +2,6 @@ import uuid
 from typing import List
 import datetime
 
-from fastapi.responses import JSONResponse
-
 from app.models.User import AttendanceLog, Employee, PayrollSession
 from app.schemas import (
     APIResponse,
@@ -12,6 +10,7 @@ from app.schemas import (
     EmployeeUpdate,
     VerifyRequest,
 )
+from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException
@@ -53,12 +52,10 @@ async def edit_employee(
     employee_record = result.scalars().first()
 
     if employee_record is None:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="Employee not found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="Employee not found",
+            status_code=404
         )
 
     update_data = employee.dict(exclude_unset=True)
@@ -117,22 +114,18 @@ async def verify(
     result = await db.execute(stmt)
     row = result.first()
     if not row:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="No matching employee found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="No matching employee found",
+            status_code=404
         )
     employee, similarity = row
 
     if not employee or similarity < SIMILARITY_THRESHOLD:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="No matching employee found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="No matching employee found",
+            status_code=404
         )
 
     # Determine IN/OUT from last log
@@ -207,4 +200,8 @@ async def verify(
             "total_pay": payroll_session.total_pay,
         }
 
-    return response_data
+    return create_response(
+        success=True,
+        data=response_data,
+        message="Employee verified successfully"
+    )

@@ -1,8 +1,11 @@
 import os
+from typing import Optional
 from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 load_dotenv()
 GMAIL_APP_EMAIL = os.getenv("GMAIL_APP_EMAIL")
@@ -41,3 +44,23 @@ def send_payroll_email(
         return {"success": False, "message": f"SMTP error: {str(e)}"}
     except Exception as e:
         return {"success": False, "message": f"Unexpected error: {str(e)}"}
+
+def create_response(
+    success: bool,
+    data = None,
+    message: Optional[str] = None,
+    status_code: int = 200
+) -> JSONResponse:
+    from app.schemas import APIResponse
+    
+    response = APIResponse(
+        success=success,
+        data=data,
+        message=message,
+        status_code=status_code
+    )
+    
+    return JSONResponse(
+        status_code=status_code,
+        content=jsonable_encoder(response)
+    )

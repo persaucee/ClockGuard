@@ -6,6 +6,7 @@ from app.schemas import (
     OrganizationResponse,
 )
 from app.models.User import Organization
+from app.utils import create_response
 from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -27,21 +28,17 @@ async def add_times(
     org_record = result.scalar_one_or_none()
 
     if not org_record:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="Organization not found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="Organization not found",
+            status_code=404
         )
 
     if org_record.default_open_time or org_record.default_close_time:
-        return JSONResponse(
-            status_code=400,
-            content=APIResponse(
-                success=False,
-                message="Open/Close times already set for this organization"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="Open/Close times already set for this organization",
+            status_code=400
         )
 
     update_data = request.model_dump(exclude_unset=True)
@@ -72,12 +69,10 @@ async def update_times(
     org_record = result.scalar_one_or_none()
 
     if not org_record:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="Organization not found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="Organization not found",
+            status_code=404
         )
 
     update_data = request.model_dump(exclude_unset=True)

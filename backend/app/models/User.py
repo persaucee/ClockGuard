@@ -112,6 +112,7 @@ class PayrollSession(Base):
     shift_date = Column(Date, nullable=False)
     clock_in_time = Column(TIMESTAMP(timezone=True), nullable=False)
     clock_out_time = Column(TIMESTAMP(timezone=True), nullable=False)
+    tip_amount = Column(Float, nullable=True)
     total_hours = Column(Float, nullable=False)
     total_pay = Column(Float, nullable=False)
     requires_admin_review = Column(Boolean, nullable=False, server_default="false")

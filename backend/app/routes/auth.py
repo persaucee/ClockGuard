@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.models.User import Admin
 from app.schemas import APIResponse, LoginData, UserData
+from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -57,9 +58,10 @@ async def login(form_data: LoginData,
         is_valid = await run_in_threadpool(verify_password, form_data.password, user.password_hash)
 
     if not user or not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username and/or password"
+        return create_response(
+            success=False,
+            message="Incorrect username and/or password",
+            status_code=401
         )
     
     access_token = create_access_token(
@@ -134,7 +136,7 @@ async def refresh_token_endpoint(request: Request):
 
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
-    return APIResponse(
+    return create_response(
         success=True, 
         data=UserData(
             username=current_user.username, 
@@ -142,4 +144,5 @@ async def read_users_me(current_user: dict = Depends(get_current_user)):
             last_name=current_user.last_name, 
             organization_id=current_user.organization_id
         ),
-        message="User info retrieved")
+        message="User info retrieved"
+    )

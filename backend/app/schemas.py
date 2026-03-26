@@ -10,6 +10,7 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     message: Optional[str] = None
+    status_code: int = 200
 
 class LoginData(BaseModel):
     username: str
@@ -80,4 +81,23 @@ class AttendanceRecordBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class AttendanceRecordResponse(AttendanceRecordBase):
+    pass
+
+
+class PayrollSessionBase(BaseModel):
+    id: UUID
+    employee_id: UUID
+    shift_date: datetime
+    clock_in_time: Optional[datetime] = None
+    clock_out_time: Optional[datetime] = None
+    total_hours: Optional[float] = None
+    tip_amount: Optional[float] = None
+    total_pay: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PayrollSessionCreate(PayrollSessionBase):
+    pass
+    
+class PayrollSessionResponse(PayrollSessionBase):
     pass
