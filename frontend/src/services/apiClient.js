@@ -68,9 +68,25 @@ export const api = {
   },
   
   attendance: {
-    getRecords: async (filters) => {
-      console.log('Get attendance records endpoint not yet implemented', filters);
-      return [];
+    getLogs: async () => {
+      const url = `${API_BASE_URL}/attendance/logs`;
+      
+      const config = {
+        method: 'GET',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch attendance logs' }));
+        throw new Error(errorData.message || 'Failed to fetch attendance logs');
+      }
+      
+      return await response.json();
     },
   },
   
