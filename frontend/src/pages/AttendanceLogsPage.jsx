@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './AttendanceLogsPage.css';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { supabase } from '../services/supabaseClient';
+import { api } from '../services/apiClient';
 
 function AttendanceLogsPage() {
   const [logs, setLogs] = useState([]);
@@ -15,36 +15,32 @@ function AttendanceLogsPage() {
         setLoading(true);
         setError(null);
 
-        const { data: logsData, error: logsError } = await supabase
-          .from('attendance_logs')
-          .select('*')
-          .order('timestamp', { ascending: false });
+        const response = await api.attendance.getLogs();
+        const sessions = response.data || [];
 
-        console.log("attendance logs data:", logsData);
-        console.log("attendance logs error:", logsError);
-
-        if (logsError) throw logsError;
-
-        const { data: employeesData, error: employeesError } = await supabase
-          .from('employees')
-          .select('id, name');
-
-        console.log("employees data:", employeesData);
-        console.log("employees error:", employeesError);
-
-        if (employeesError) throw employeesError;
-
-        const employeeMap = {};
-        employeesData.forEach(emp => {
-          employeeMap[emp.id] = emp.name;
+        const logEntries = [];
+        sessions.forEach(session => {
+          if (session.clock_in_time) {
+            logEntries.push({
+              id: `${session.id}-in`,
+              employee_name: session.employee_name,
+              action: 'IN',
+              timestamp: session.clock_in_time
+            });
+          }
+          if (session.clock_out_time) {
+            logEntries.push({
+              id: `${session.id}-out`,
+              employee_name: session.employee_name,
+              action: 'OUT',
+              timestamp: session.clock_out_time
+            });
+          }
         });
 
-        const enrichedLogs = logsData.map(log => ({
-          ...log,
-          employee_name: employeeMap[log.employee_id] || 'Unknown Employee'
-        }));
+        logEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        setLogs(enrichedLogs);
+        setLogs(logEntries);
       } catch (err) {
         setError(err.message || 'Failed to load attendance logs');
         console.error('Error fetching attendance logs:', err);

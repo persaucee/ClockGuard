@@ -5,6 +5,7 @@ import DashboardPage from '../pages/DashboardPage';
 import EmployeesPage from '../pages/EmployeesPage';
 import AttendanceLogsPage from '../pages/AttendanceLogsPage';
 import SettingsPage from '../pages/SettingsPage';
+import OnboardingPage from '../pages/OnboardingPage';
 
 function AppRouter() {
   return (
@@ -12,6 +13,7 @@ function AppRouter() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/employees" element={<EmployeesPage />} />
         <Route path="/attendance-logs" element={<AttendanceLogsPage />} />
