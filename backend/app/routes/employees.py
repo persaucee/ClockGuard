@@ -13,7 +13,7 @@ from app.schemas import (
 from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
