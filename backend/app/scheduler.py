@@ -33,10 +33,6 @@ async def auto_close_shifts() -> None:
        with requires_admin_review = True.
     """
     now_utc = datetime.now(tz=timezone.utc)
-    current_time = now_utc.time().replace(second=0, microsecond=0)
-    window_start = (now_utc - timedelta(minutes=JOB_INTERVAL_MINUTES)).time().replace(
-        second=0, microsecond=0
-    )
 
     logger.info(
         "[Scheduler] auto_close_shifts fired at %s UTC (interval: %d min)",
@@ -46,7 +42,7 @@ async def auto_close_shifts() -> None:
 
     async with AsyncSessionLocal() as db:
         try:
-            await _process_close_outs(db, window_start, current_time, now_utc)
+            await _process_close_outs(db, now_utc)
             await db.commit()
             logger.info("[Scheduler] auto_close_shifts completed successfully")
         except Exception:
@@ -56,29 +52,15 @@ async def auto_close_shifts() -> None:
 
 async def _process_close_outs(
     db: AsyncSession,
-    window_start,
-    window_end,
     now_utc: datetime,
 ) -> None:
-    from sqlalchemy import and_, or_
-
-    midnight_straddle = window_start > window_end
-
-    if not midnight_straddle:
-        time_filter = and_(
-            Organization.default_close_time > window_start,
-            Organization.default_close_time <= window_end,
-        )
-    else:
-        time_filter = or_(
-            Organization.default_close_time > window_start,
-            Organization.default_close_time <= window_end,
-        )
+    eastern_offset = timedelta(hours=-4)
+    now_eastern = (now_utc + eastern_offset).time().replace(second=0, microsecond=0)
 
     org_result = await db.execute(
         select(Organization).where(
             Organization.default_close_time.isnot(None),
-            time_filter,
+            Organization.default_close_time <= now_eastern,
         )
     )
     organizations = org_result.scalars().all()
@@ -98,11 +80,6 @@ async def _auto_close_org(
     org: Organization,
     now_utc: datetime,
 ) -> None:
-    """
-    For a single organization, find all still-clocked-in employees and
-    generate clock out logs + payroll sessions.
-    """
-
     from sqlalchemy import func as sqlfunc
 
     latest_ts_subq = (
@@ -141,12 +118,13 @@ async def _auto_close_org(
         len(rows),
     )
 
-    close_dt = datetime.combine(now_utc.date(), org.default_close_time).replace(
-        tzinfo=timezone.utc
-    )
+    eastern_offset = timedelta(hours=-4)
+    now_eastern = now_utc + eastern_offset
+    close_dt = datetime.combine(now_eastern.date(), org.default_close_time) - eastern_offset
+    close_dt = close_dt.replace(tzinfo=timezone.utc)
 
     for log_in, employee in rows:
-        await _create_auto_out(db, employee, log_in, close_dt)
+        await _create_auto_out(db, employee, log_in, close_dt, now_utc)
 
 
 async def _create_auto_out(
@@ -154,25 +132,18 @@ async def _create_auto_out(
     employee: Employee,
     log_in: AttendanceLog,
     close_dt: datetime,
+    now_utc: datetime,
 ) -> None:
-
-    if close_dt <= log_in.timestamp:
-        logger.warning(
-            "[Scheduler] close_dt %s <= clock_in %s for employee %s — skipping.",
-            close_dt,
-            log_in.timestamp,
-            employee.id,
-        )
-        return
+    effective_close_dt = now_utc if close_dt <= log_in.timestamp else close_dt
 
     auto_out_log = AttendanceLog(
         employee_id=employee.id,
         action="OUT",
-        timestamp=close_dt,
+        timestamp=effective_close_dt,
     )
     db.add(auto_out_log)
 
-    duration_seconds = (close_dt - log_in.timestamp).total_seconds()
+    duration_seconds = (effective_close_dt - log_in.timestamp).total_seconds()
     total_hours = round(duration_seconds / 3600, 4)
     hourly_rate = employee.hourly_rate or 0.0
     total_pay = round(total_hours * hourly_rate, 2)
@@ -181,7 +152,7 @@ async def _create_auto_out(
         employee_id=employee.id,
         shift_date=log_in.timestamp.date(),
         clock_in_time=log_in.timestamp,
-        clock_out_time=close_dt,
+        clock_out_time=effective_close_dt,
         total_hours=total_hours,
         total_pay=total_pay,
         requires_admin_review=True,
@@ -192,7 +163,7 @@ async def _create_auto_out(
         "[Scheduler] Employee %s | IN: %s | OUT: %s | %.4fh | £%.2f | flagged for review",
         employee.id,
         log_in.timestamp.isoformat(),
-        close_dt.isoformat(),
+        effective_close_dt.isoformat(),
         total_hours,
         total_pay,
     )

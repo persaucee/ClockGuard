@@ -1,6 +1,8 @@
 from datetime import date
+import uuid
 from fastapi.responses import JSONResponse
 from app.models.User import Employee, PayrollSession
+from app.utils import send_payroll_email
 from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
@@ -10,8 +12,8 @@ router = APIRouter(prefix="/payroll")
 
 
 @router.post("/email/{employee_id}")
-async def send_payroll_email(
-    employee_id: int,
+async def send_email(
+    employee_id: uuid.UUID,
     total_pay: float,
     total_hours: float,
     db: AsyncSession = Depends(get_db),
@@ -21,12 +23,8 @@ async def send_payroll_email(
     employee = employee.scalar_one_or_none()
     if not employee:
         return JSONResponse(status_code=404, content={"success": False, "message": "Employee not found"})
-    send_payroll_email(
-        employee_email=employee.email,
-        total_pay=total_pay,
-        hours=total_hours,
-        sender_email=current_user.email
-    )
+    send_payroll_email(employee.email,total_pay,total_hours)
+    return JSONResponse(content={"success": True, "message": "Payroll email sent successfully"})
 
 
 @router.get("/report")

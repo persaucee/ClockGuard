@@ -5,6 +5,7 @@ from app.schemas import (
     OrganizationRequest,
     OrganizationResponse,
 )
+from app.models.User import Organization
 from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -18,7 +19,12 @@ async def add_times(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    org_record = current_user.organization
+    result = await db.execute(
+        select(Organization).where(
+            Organization.id == current_user.organization_id
+        )
+    )
+    org_record = result.scalar_one_or_none()
 
     if not org_record:
         return JSONResponse(
@@ -58,7 +64,12 @@ async def update_times(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    org_record = current_user.organization
+    result = await db.execute(
+        select(Organization).where(
+            Organization.id == current_user.organization_id
+        )
+    )
+    org_record = result.scalar_one_or_none()
 
     if not org_record:
         return JSONResponse(

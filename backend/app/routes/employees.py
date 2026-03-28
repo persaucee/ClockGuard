@@ -21,6 +21,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 load_dotenv()
 router = APIRouter(prefix="/employees")
 
+SIMILARITY_THRESHOLD = 0.85
+
 # Endpoints
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
 async def get_employees(current_user: dict = Depends(get_current_user), 
@@ -124,7 +126,7 @@ async def verify(
         )
     employee, similarity = row
 
-    if not employee or similarity < 0.85:
+    if not employee or similarity < SIMILARITY_THRESHOLD:
         return JSONResponse(
             status_code=404,
             content=APIResponse(
@@ -193,7 +195,7 @@ async def verify(
     response_data = {
         "match": {"employee_id": str(employee.id)},
         "similarity": float(similarity),
-        "verified": similarity > 0.85,
+        "verified": similarity > SIMILARITY_THRESHOLD,
         "action": action,
     }
     if payroll_session:

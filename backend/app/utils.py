@@ -5,13 +5,13 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 load_dotenv()
+GMAIL_APP_EMAIL = os.getenv("GMAIL_APP_EMAIL")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 def send_payroll_email(
     employee_email: str,
     total_pay: float,
-    hours: float,
-    sender_email: str
+    hours: float
 ) -> dict:
     try:
         subject = "Your Pay Period Summary"
@@ -24,14 +24,14 @@ def send_payroll_email(
         )
 
         msg = MIMEMultipart()
-        msg["From"] = sender_email
+        msg["From"] = GMAIL_APP_EMAIL
         msg["To"] = employee_email
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain"))
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, GMAIL_APP_PASSWORD)
-            server.sendmail(sender_email, employee_email, msg.as_string())
+            server.login(GMAIL_APP_EMAIL, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_APP_EMAIL, employee_email, msg.as_string())
 
         return {"success": True, "message": f"Email sent to {employee_email}"}
 

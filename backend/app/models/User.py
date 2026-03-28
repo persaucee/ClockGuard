@@ -41,6 +41,11 @@ class Employee(Base):
         back_populates="employee",
         cascade="all, delete-orphan"
     )
+    payroll_sessions = relationship(
+        "PayrollSession",
+        back_populates="employee",
+        cascade="all, delete-orphan"
+    )
     organization = relationship(
         "Organization",
         back_populates="employees"
