@@ -233,7 +233,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                             if response.status_code == 200:
                                 data = response.json()
-                                employee = data.get("match", {}).get("name", "Unknown")
+                                employee = data.get("name", "Unknown")
                                 similarity = data.get("similarity", 0.0)
                                 # 200 green screen
                                 overlay = frame.copy()
