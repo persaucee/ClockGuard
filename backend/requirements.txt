@@ -19,5 +19,4 @@ tensorflow
 scipy
 numpy
 requests
-threading
 apscheduler
