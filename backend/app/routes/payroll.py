@@ -9,6 +9,7 @@ from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import BackgroundTasks
 
 router = APIRouter(prefix="/payroll")
 
@@ -18,6 +19,7 @@ async def send_email(
     employee_id: uuid.UUID,
     total_pay: float,
     total_hours: float,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ) -> JSONResponse:
@@ -29,19 +31,25 @@ async def send_email(
             message="Employee not found",
             status_code=404
         )
-    send_payroll_email(employee.email, total_pay, total_hours)
+    background_tasks.add_task(send_payroll_email, employee.email, total_pay, total_hours)
     return create_response(
         success=True,
         message="Payroll email sent successfully"
     )
 
-@router.get("/", response_model=APIResponse[List[PayrollSessionResponse]])
-async def get_payroll_sessions(
+@router.get("/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
+async def get_employee_payroll_sessions(
+    employee_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ) -> JSONResponse:
     result = await db.execute(
-        select(PayrollSession).where(PayrollSession.employee_id == current_user.id)
+        select(PayrollSession)
+        .join(PayrollSession.employee)
+        .where(
+            PayrollSession.employee_id == employee_id,
+            Employee.organization_id == current_user.organization_id
+        )
     )
     sessions = result.scalars().all()
     return create_response(
@@ -50,8 +58,9 @@ async def get_payroll_sessions(
         message="Payroll sessions retrieved successfully"
     )
 
-@router.post("/{id}", response_model=APIResponse[PayrollSessionResponse])
+@router.put("/{session_id}", response_model=APIResponse[PayrollSessionResponse])
 async def edit_payroll_session(
+    session_id: uuid.UUID,
     record: PayrollSessionCreate,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
@@ -60,7 +69,7 @@ async def edit_payroll_session(
         select(PayrollSession)
         .join(PayrollSession.employee)
         .where(
-            PayrollSession.id == id,
+            PayrollSession.id == session_id,
             Employee.organization_id == current_user.organization_id
         )
     )
@@ -71,14 +80,10 @@ async def edit_payroll_session(
             message="Payroll session not found",
             status_code=404
         )
-    payroll_session = PayrollSession(
-        employee_id=record.employee_id,
-        shift_date=record.shift_date,
-        tip_amount=record.tip_amount,
-        total_hours=record.total_hours,
-        total_pay=record.total_pay
-    )
-    db.add(payroll_session)
+    payroll_session.shift_date = record.shift_date
+    payroll_session.tip_amount = record.tip_amount
+    payroll_session.total_hours = record.total_hours
+    payroll_session.total_pay = record.total_pay
     await db.commit()
     await db.refresh(payroll_session)
     return create_response(
@@ -94,6 +99,12 @@ async def get_payroll_report(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ) -> JSONResponse:
+    if start_date > end_date:
+        return create_response(
+            success=False,
+            message="Invalid date range",
+            status_code=400
+        )
     result = await db.execute(
         select(
             Employee.id.label("employee_id"),
@@ -122,8 +133,8 @@ async def get_payroll_report(
             "employee_name": row.employee_name,
             "employee_email": row.employee_email,
             "hourly_rate": row.hourly_rate,
-            "total_hours": round(row.total_hours, 2),
-            "total_pay": round(row.total_pay, 2),
+            "total_hours": round(row.total_hours or 0, 2),
+            "total_pay": round(row.total_pay or 0, 2),
             "session_count": row.session_count,
         }
         for row in rows
