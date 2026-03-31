@@ -52,9 +52,13 @@ async def get_employee_payroll_sessions(
         )
     )
     sessions = result.scalars().all()
+    sessions_response = [
+        PayrollSessionResponse.model_validate(s)
+        for s in sessions
+    ]
     return create_response(
         success=True,
-        data=sessions,
+        data=sessions_response,
         message="Payroll sessions retrieved successfully"
     )
 
@@ -88,7 +92,7 @@ async def edit_payroll_session(
     await db.refresh(payroll_session)
     return create_response(
         success=True,
-        data=payroll_session,
+        data=PayrollSessionResponse.model_validate(payroll_session),
         message="Payroll session updated successfully"
     )
 

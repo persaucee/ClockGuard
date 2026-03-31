@@ -85,7 +85,6 @@ class AttendanceRecordResponse(AttendanceRecordBase):
 
 
 class PayrollSessionBase(BaseModel):
-    id: UUID
     employee_id: UUID
     shift_date: datetime
     clock_in_time: Optional[datetime] = None
@@ -100,4 +99,4 @@ class PayrollSessionCreate(PayrollSessionBase):
     pass
     
 class PayrollSessionResponse(PayrollSessionBase):
-    pass
+    id: UUID
