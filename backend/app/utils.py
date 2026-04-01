@@ -25,8 +25,8 @@ def send_payroll_email(
         body = (
             f"Hello,\n\n"
             f"The pay period has ended. Here is your summary:\n\n"
-            f"  Hours Worked: {hours}\n"
-            f"  Total Earnings: ${total_pay:.2f}\n\n"
+            f"*  Hours Worked: {f'{hours:.2f}'}\n"
+            f"*  Total Earnings (Before Taxes): ${total_pay:.2f}\n\n"
             f"Thank you."
         )
 
