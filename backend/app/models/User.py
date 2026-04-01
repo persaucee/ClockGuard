@@ -115,6 +115,7 @@ class PayrollSession(Base):
     tip_amount = Column(Float, nullable=True)
     total_hours = Column(Float, nullable=False)
     total_pay = Column(Float, nullable=False)
+    processed = Column(Boolean, nullable=False, server_default="false")
     requires_admin_review = Column(Boolean, nullable=False, server_default="false")
 
     employee = relationship("Employee", back_populates="payroll_sessions")
