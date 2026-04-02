@@ -243,14 +243,16 @@ async def refresh_token_endpoint(request: Request):
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
     return APIResponse(
-        success=True, 
-        data=UserData(
-            username=current_user.username, 
-            first_name=current_user.first_name, 
-            last_name=current_user.last_name, 
-            organization_id=current_user.organization_id
-        ),
-        message="User info retrieved")
+        success=True,
+        data={
+            "username": current_user.username,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
+            "organization_id": current_user.organization_id,
+            "two_factor_enabled": current_user.two_factor_enabled
+        },
+        message="User info retrieved"
+    )
 
 
 @router.post("/2fa/setup/initiate")
@@ -301,4 +303,20 @@ async def confirm_2fa_setup(
     return APIResponse(
         success=True,
         message="Two-factor authentication enabled successfully"
+    )
+
+@router.post("/2fa/disable")
+async def disable_2fa(
+    current_user: Admin = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    current_user.two_factor_enabled = False
+    current_user.two_factor_secret = None
+
+    await db.commit()
+    await db.refresh(current_user)
+
+    return APIResponse(
+        success=True,
+        message="Two-factor authentication disabled successfully"
     )
