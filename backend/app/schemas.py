@@ -12,6 +12,24 @@ class APIResponse(BaseModel, Generic[T]):
     message: Optional[str] = None
     status_code: int = 200
 
+class RegisterData(BaseModel):
+    first_name: str
+    last_name: str
+
+class RegisterDataRequest(RegisterData):
+    username: str = Field(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
+    password: str = Field(min_length=8, max_length=72)
+    organization_name: str = Field(min_length=1, max_length=200)
+    open_time: Optional[time] = None
+    close_time: Optional[time] = None
+
+class RegisterDataResponse(RegisterData):
+    username: str
+    organization_id: UUID
+    organization_name: str
+    open_time: Optional[time]
+    close_time: Optional[time]
+
 class LoginData(BaseModel):
     username: str
     password: str

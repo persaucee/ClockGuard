@@ -2,8 +2,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from app.models.User import Admin
-from app.schemas import APIResponse, LoginData, UserData
+from app.models.User import Admin, Organization
+from app.schemas import APIResponse, LoginData, RegisterDataRequest, RegisterDataResponse, UserData
 from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
@@ -44,6 +44,89 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     encoded_jwt = jwt.encode(to_encode, LOGIN_SECRET, algorithm="HS256")
     return encoded_jwt
 
+
+@router.post("/register")
+async def register(
+    form_data: RegisterDataRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    username = form_data.username.lower()
+
+    existing_user = await db.execute(
+        select(Admin).filter(Admin.username == username)
+    )
+    if existing_user.scalars().first():
+        return create_response(
+            success=False,
+            message="Username already exists",
+            status_code=400
+        )
+    hashed_password = await run_in_threadpool(
+        pwd_context.hash,
+        form_data.password
+    )
+    new_org = Organization(
+        name=form_data.organization_name,
+        default_open_time=form_data.open_time,
+        default_close_time=form_data.close_time
+    )
+    db.add(new_org)
+    await db.flush()
+    new_admin = Admin(
+        username=username,
+        password_hash=hashed_password,
+        first_name=form_data.first_name,
+        last_name=form_data.last_name,
+        organization_id=new_org.id
+    )
+    db.add(new_admin)
+    try:
+        await db.commit()
+    except:
+        await db.rollback()
+        raise
+    await db.refresh(new_org)
+    await db.refresh(new_admin)
+    access_token = create_access_token(
+        data={"sub": new_admin.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": new_admin.username}
+    )
+
+    response_body = create_response(
+        success=True,
+        data=RegisterDataResponse(
+            username=new_admin.username,
+            first_name=new_admin.first_name,
+            last_name=new_admin.last_name,
+            organization_id=new_org.id,
+            organization_name=new_org.name,
+            open_time=new_org.default_open_time,
+            close_time=new_org.default_close_time
+        ),
+        message="User registered successfully"
+    )
+    # TODO: set secure=true in production
+    json_response = JSONResponse(content=jsonable_encoder(response_body))
+    json_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    json_response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return json_response
 
 # Endpoints
 @router.post("/login")
