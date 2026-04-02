@@ -12,6 +12,10 @@ function EmployeesPage() {
   const [shiftsLoading, setShiftsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingTips, setEditingTips] = useState({});
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [processingPayroll, setProcessingPayroll] = useState(false);
+  const [payrollMessage, setPayrollMessage] = useState(null);
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -140,6 +144,59 @@ function EmployeesPage() {
     }
   };
 
+  const handleRunPayroll = async () => {
+    if (!startDate || !endDate) {
+      setPayrollMessage({ type: 'error', text: 'Please select both start and end dates.' });
+      return;
+    }
+
+    if (new Date(startDate) > new Date(endDate)) {
+      setPayrollMessage({ type: 'error', text: 'Start date must be before or equal to end date.' });
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to run payroll for the period from ${startDate} to ${endDate}? This will process all uncalculated shifts and send pay stub emails.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setProcessingPayroll(true);
+      setPayrollMessage(null);
+
+      const result = await api.payroll.processPayroll(startDate, endDate);
+
+      setPayrollMessage({ type: 'success', text: result.message || 'Payroll processed successfully.' });
+      setStartDate('');
+      setEndDate('');
+
+      const allSessions = [];
+      for (const employee of employees) {
+        try {
+          const sessions = await api.payroll.getEmployeeSessions(employee.id);
+          const uncalculated = sessions.filter(session => !session.processed);
+          uncalculated.forEach(session => {
+            allSessions.push({
+              ...session,
+              employee_name: employee.name,
+            });
+          });
+        } catch (err) {
+          console.error(`Error fetching sessions for employee ${employee.id}:`, err);
+        }
+      }
+      allSessions.sort((a, b) => new Date(b.shift_date) - new Date(a.shift_date));
+      setUncalculatedShifts(allSessions);
+    } catch (err) {
+      setPayrollMessage({ type: 'error', text: err.message || 'Failed to process payroll.' });
+    } finally {
+      setProcessingPayroll(false);
+    }
+  };
+
   const formatDateTime = (dateTime) => {
     if (!dateTime) return 'N/A';
     const date = new Date(dateTime);
@@ -177,6 +234,46 @@ function EmployeesPage() {
                   employees={employees} 
                   onEmployeeUpdate={handleEmployeeUpdate}
                 />
+                
+                <div className="run-payroll-section">
+                  <h2>Run Payroll</h2>
+                  <div className="payroll-controls">
+                    <div className="date-inputs">
+                      <div className="date-input-group">
+                        <label htmlFor="start-date">Start Date</label>
+                        <input
+                          type="date"
+                          id="start-date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          disabled={processingPayroll}
+                        />
+                      </div>
+                      <div className="date-input-group">
+                        <label htmlFor="end-date">End Date</label>
+                        <input
+                          type="date"
+                          id="end-date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          disabled={processingPayroll}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      className="run-payroll-btn"
+                      onClick={handleRunPayroll}
+                      disabled={processingPayroll || !startDate || !endDate}
+                    >
+                      {processingPayroll ? 'Processing...' : 'Run Payroll'}
+                    </button>
+                  </div>
+                  {payrollMessage && (
+                    <div className={`payroll-message ${payrollMessage.type}`}>
+                      {payrollMessage.text}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="uncalculated-shifts-section">
                   <h2>Uncalculated Shifts</h2>

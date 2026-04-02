@@ -193,6 +193,26 @@ export const api = {
       const result = await response.json();
       return result.data || result;
     },
+    processPayroll: async (startDate, endDate) => {
+      const url = `${API_BASE_URL}/payroll/process?start_date=${startDate}&end_date=${endDate}`;
+      
+      const config = {
+        method: 'POST',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to process payroll' }));
+        throw new Error(errorData.message || 'Failed to process payroll');
+      }
+      
+      return await response.json();
+    },
   },
 };
 
