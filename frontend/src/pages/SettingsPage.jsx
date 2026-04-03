@@ -2,15 +2,35 @@ import React, { useState, useEffect } from 'react';
 import './SettingsPage.css';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
+import api from '../services/apiClient';
+import { QRCodeCanvas } from 'qrcode.react';
 
 function SettingsPage() {
   const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
   const [fontFamily, setFontFamily] = useState(localStorage.getItem('fontFamily') || 'system');
+  const [qrSecret, setQrSecret] = useState('');
+  const [setupCode, setSetupCode] = useState('');
+  const [setupMode, setSetupMode] = useState(false);
+  const [message, setMessage] = useState('');
+  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
 
   useEffect(() => {
     applyPreferences();
   }, [textSize, theme, fontFamily]);
+
+  const fetchUser = async () => {
+    try {
+      const res = await api.auth.getMe();
+      setIs2FAEnabled(res.data.two_factor_enabled);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   const applyPreferences = () => {
     const root = document.documentElement;
@@ -51,6 +71,45 @@ function SettingsPage() {
   const handleFontChange = (font) => {
     setFontFamily(font);
     localStorage.setItem('fontFamily', font);
+  };
+
+// 2FA Functions
+
+  const handleEnable2FA = async () => {
+    try {
+      const res = await api.auth.initiate2FASetup();
+
+      setQrSecret(res.data.secret);
+      setSetupMode(true);
+      setMessage('Scan this secret in Google Authenticator');
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  const handleConfirm2FA = async () => {
+    try {
+      await api.auth.confirm2FASetup(setupCode);
+      setMessage('2FA enabled successfully!');
+      setSetupMode(false);
+      setIs2FAEnabled(true);
+      setSetupCode('');
+    } catch (err) {
+      setMessage(err.message);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    try {
+      await api.auth.disable2FA();
+      setIs2FAEnabled(false);
+      setSetupMode(false);
+      setQrSecret('');
+      setSetupCode('');
+      setMessage('2FA disabled successfully!');
+    } catch (err) {
+      setMessage(err.message);
+    }
   };
 
   return (
@@ -128,6 +187,78 @@ function SettingsPage() {
                 </button>
               </div>
             </div>
+
+            <div className="settings-section">
+              <h2>Security</h2>
+
+              {!is2FAEnabled && !setupMode && (
+                <button
+                  className="setting-option"
+                  onClick={handleEnable2FA}
+                >
+                  Enable 2FA
+                </button>
+              )}
+
+              {setupMode && (
+                <div style={{ marginTop: '1rem' }}>
+                  <p><strong>Secret:</strong> {qrSecret}</p>
+
+                  <QRCodeCanvas
+                    value={`otpauth://totp/ClockGuard?secret=${qrSecret}&issuer=ClockGuard`}
+                    size={150}
+                  />
+
+                  <p style={{ marginBottom: '0.75rem', color: '#666' }}>
+                    Add this secret to Google Authenticator, then enter the 6-digit code below.
+                  </p>
+
+                  <input
+                    type="text"
+                    placeholder="Enter 6-digit code"
+                    value={setupCode}
+                    onChange={(e) => setSetupCode(e.target.value)}
+                    style={{
+                      marginTop: '10px',
+                      padding: '8px',
+                      width: '100%',
+                      maxWidth: '300px'
+                    }}
+                  />
+
+                  <div>
+                    <button
+                      className="setting-option"
+                      onClick={handleConfirm2FA}
+                      style={{ marginTop: '10px' }}
+                    >
+                      Confirm 2FA
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {is2FAEnabled && !setupMode && (
+                <div style={{ marginTop: '1rem' }}>
+                  <p style={{ color: 'green', fontWeight: '500' }}>
+                    2FA is enabled
+                  </p>
+
+                  <button
+                    className="setting-option"
+                    onClick={handleDisable2FA}
+                    style={{ marginTop: '10px' }}
+                  >
+                    Disable 2FA
+                  </button>
+                </div>
+              )}
+
+              {message && (
+                <p style={{ marginTop: '10px', color: 'green' }}>{message}</p>
+              )}
+            </div>
+
           </div>
         </main>
       </div>
