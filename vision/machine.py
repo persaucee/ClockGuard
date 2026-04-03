@@ -5,8 +5,8 @@ import time
 import numpy as np
 from keras_facenet import FaceNet
 import requests 
-import threading
-
+import os
+os.environ["OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"] = "0"
 
 api_session = requests.Session()
 BACKEND_URL = "http://localhost:8000"
@@ -76,7 +76,7 @@ def check_liveness(frame, x,y,w,h):
     face_crop = frame[start_y:end_y, start_x:end_x]
 
     if face_crop.size == 0:
-        return False, 0.0
+        return False, 0.0, 0
     blob = cv2.dnn.blobFromImage(face_crop, scalefactor=1.0, size=(80, 80), mean=(0, 0, 0), swapRB=False, crop=False)
     liveness_net.setInput(blob)
     preds = liveness_net.forward()
@@ -105,14 +105,29 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
     # 2. Setup the Camera (Let it use its default/max resolution)
     capture = cv2.VideoCapture(0)
-    # We ask for high resolution, but we don't care if it fails. We will center whatever it gives us.
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
     
+    # FORCE the MJPG codec. This prevents the -1072875772 Invalid Media Type error!
+    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+    
+    # Check if index 0 is failing or sending 0x0 frames (IR Camera check)
+    if not capture.isOpened() or capture.get(cv2.CAP_PROP_FRAME_WIDTH) == 0:
+        capture.release()
+        print("[SYSTEM] Index 0 (likely IR camera) failed. Trying Index 1...")
+        capture = cv2.VideoCapture(1)
+        capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+    # 3. Give the hardware a second to handshake with the OS
+    time.sleep(1.0)
+
     cam_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
     cam_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    cam_w = cam_w * 2
+    cam_h = cam_h * 2
+    if cam_w == 0 or cam_h == 0:
+        print("[CRITICAL] Camera still returning 0x0. Verify Windows Privacy settings.")
+        return 
+        
     print(f"[SYSTEM] Actual Camera Feed Size: {cam_w}x{cam_h}")
-
     # 3. Calculate the centering offsets
     # This finds the exact coordinates to paste the camera feed into the middle of the black screen
     paste_x = (screen_w - cam_w) // 2
@@ -139,7 +154,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     while not exit_camera:
         ret, frame = capture.read()
         if not ret: break
-
+        frame = cv2.resize(frame, (cam_w, cam_h))
         roi_frame = frame[y_start:y_start+ROI_H, x_start:x_start+ROI_W]
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
