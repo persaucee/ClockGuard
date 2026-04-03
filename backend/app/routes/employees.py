@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.websockets.ws_router import org_ws_manager
 
 load_dotenv()
 router = APIRouter(prefix="/employees")
@@ -150,7 +151,11 @@ async def verify(
     await db.commit()
 
     response_data = {
-        "match": {"employee_id": str(employee.id)},
+        "match": {
+            "employee_id": str(employee.id),
+            "name": employee.name,
+            "email": employee.email,
+        },
         "similarity": float(similarity),
         "verified": similarity > SIMILARITY_THRESHOLD,
         "action": action,
@@ -163,6 +168,13 @@ async def verify(
             "total_hours": payroll_session.total_hours,
             "total_pay": payroll_session.total_pay,
         }
+    await org_ws_manager.broadcast_to_org(
+        current_user.organization_id,
+        {
+            "event": "clock_event",
+            **response_data,
+        }
+    )
 
     return create_response(
         success=True,

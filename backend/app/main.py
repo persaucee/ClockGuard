@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.scheduler import start_scheduler, stop_scheduler
 from contextlib import asynccontextmanager
+from app.websockets import ws_router
 
 from .routes import auth, employees, organization, payroll, attendance
 import logging
@@ -35,6 +36,7 @@ app.include_router(employees.router)
 app.include_router(organization.router)
 app.include_router(payroll.router)
 app.include_router(attendance.router)
+app.include_router(ws_router.router)
 
 # Health check endpoint
 @app.get("/")
