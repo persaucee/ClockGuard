@@ -262,6 +262,72 @@ export const api = {
       return await response.json();
     },
   },
+  
+  payroll: {
+    getEmployeeSessions: async (employeeId) => {
+      const url = `${API_BASE_URL}/payroll/${employeeId}`;
+      
+      const config = {
+        method: 'GET',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch payroll sessions' }));
+        throw new Error(errorData.message || 'Failed to fetch payroll sessions');
+      }
+      
+      const result = await response.json();
+      return result.data || [];
+    },
+    updateSession: async (sessionId, data) => {
+      const url = `${API_BASE_URL}/payroll/${sessionId}`;
+      
+      const config = {
+        method: 'PUT',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to update payroll session' }));
+        throw new Error(errorData.message || 'Failed to update payroll session');
+      }
+      
+      const result = await response.json();
+      return result.data || result;
+    },
+    processPayroll: async (startDate, endDate) => {
+      const url = `${API_BASE_URL}/payroll/process?start_date=${startDate}&end_date=${endDate}`;
+      
+      const config = {
+        method: 'POST',
+        headers: {
+          ...defaultHeaders,
+        },
+        credentials: 'include',
+      };
+      
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to process payroll' }));
+        throw new Error(errorData.message || 'Failed to process payroll');
+      }
+      
+      return await response.json();
+    },
+  },
 };
 
 export const supabaseConfig = {

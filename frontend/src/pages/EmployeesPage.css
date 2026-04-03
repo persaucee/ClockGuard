@@ -84,3 +84,219 @@
     padding: var(--spacing-md) var(--spacing-xs);
   }
 }
+
+.run-payroll-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid #e5e7eb;
+}
+
+.run-payroll-section h2 {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  font-weight: 600;
+}
+
+.payroll-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.date-inputs {
+  display: flex;
+  gap: var(--spacing-md);
+  flex: 1;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.date-input-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.date-input-group input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  background-color: white;
+  transition: border-color 0.2s ease;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.date-input-group input[type="date"]:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.run-payroll-btn {
+  padding: 10px 24px;
+  background-color: var(--color-accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.run-payroll-btn:hover:not(:disabled) {
+  background-color: #2563eb;
+  transform: translateY(-1px);
+}
+
+.run-payroll-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.run-payroll-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.payroll-message {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  margin-top: var(--spacing-md);
+}
+
+.payroll-message.success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+.payroll-message.error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.uncalculated-shifts-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid #e5e7eb;
+}
+
+.uncalculated-shifts-section h2 {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+  font-weight: 600;
+}
+
+.uncalculated-shifts-section .empty-message {
+  color: var(--color-text-secondary);
+  font-size: 1rem;
+  margin: var(--spacing-md) 0;
+}
+
+.shifts-table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid #e5e7eb;
+  margin-top: var(--spacing-md);
+}
+
+.shifts-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+}
+
+.shifts-table thead {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.shifts-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.shifts-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: var(--color-text);
+  font-size: 0.9375rem;
+}
+
+.shifts-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.shifts-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.tip-input {
+  width: 100px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius-sm);
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  background-color: white;
+  transition: border-color 0.2s ease;
+}
+
+.tip-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.tip-input::placeholder {
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .payroll-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .date-inputs {
+    flex-direction: column;
+  }
+  
+  .run-payroll-btn {
+    width: 100%;
+  }
+  
+  .shifts-table th,
+  .shifts-table td {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+  }
+  
+  .tip-input {
+    width: 80px;
+    padding: 5px 8px;
+    font-size: 0.875rem;
+  }
+}
