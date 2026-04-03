@@ -87,6 +87,72 @@
   font-weight: 600;
 }
 
+.live-activity-feed {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+}
+
+.activity-feed-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activity-feed-title {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.activity-status-indicator {
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.activity-feed-content {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.activity-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.activity-empty-text {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  margin: 0;
+}
+
 .kanban-board {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -240,6 +306,14 @@
     font-size: 2.5rem;
   }
 
+  .live-activity-feed {
+    padding: var(--spacing-lg);
+  }
+
+  .activity-feed-content {
+    min-height: 150px;
+  }
+
   .kanban-column {
     padding: var(--spacing-sm);
   }
@@ -269,6 +343,22 @@
 
   .stat-label {
     font-size: 0.8125rem;
+  }
+
+  .live-activity-feed {
+    padding: var(--spacing-md);
+  }
+
+  .activity-feed-title {
+    font-size: 1.125rem;
+  }
+
+  .activity-empty-icon {
+    font-size: 2rem;
+  }
+
+  .activity-empty-text {
+    font-size: 0.875rem;
   }
 
   .empty-icon,

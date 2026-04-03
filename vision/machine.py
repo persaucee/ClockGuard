@@ -233,7 +233,8 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                             if response.status_code == 200:
                                 data = response.json()
-                                employee = data.get("name", "Unknown")
+                                print(f"\n[DEBUG JSON] RAW BACKEND DATA: {data}\n") # <--- ADD THIS LINE
+                                employee = data.get("match", {}).get("name", "Unknown")
                                 similarity = data.get("similarity", 0.0)
                                 # 200 green screen
                                 overlay = frame.copy()
@@ -262,7 +263,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                         # show in same window for 2 seconds
                         cv2.imshow('ClockGuard CV Hub', frame)
-                        cv2.waitKey(2000) 
+                        cv2.waitKey(5000) 
                        
                         start_Time = None 
                         break
@@ -276,7 +277,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if time.time() - last_capture_time > 1.0:
-                            is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                            is_live, conf, label_index = check_liveness(roi_frame, x, y, w, h)
                             if not is_live:
                                 print("[SYSTEM] Liveness not detected")
                                 cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),

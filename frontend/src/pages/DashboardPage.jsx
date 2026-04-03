@@ -33,6 +33,19 @@ function DashboardPage() {
               </div>
             </div>
 
+            <div className="live-activity-feed">
+              <div className="activity-feed-header">
+                <h2 className="activity-feed-title">Live Activity Feed</h2>
+                <span className="activity-status-indicator">●</span>
+              </div>
+              <div className="activity-feed-content">
+                <div className="activity-empty-state">
+                  <div className="activity-empty-icon">📡</div>
+                  <p className="activity-empty-text">Live scanner activity will appear here</p>
+                </div>
+              </div>
+            </div>
+
             <div className="kanban-board">
               <div className="kanban-column clocked-in-column">
                 <div className="column-header">

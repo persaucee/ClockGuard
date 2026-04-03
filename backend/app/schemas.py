@@ -118,3 +118,26 @@ class PayrollSessionCreate(PayrollSessionBase):
     
 class PayrollSessionResponse(PayrollSessionBase):
     id: UUID
+
+# 2FA Schemas
+class LoginResponseData(BaseModel):
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    organization_id: Optional[UUID] = None
+    two_factor_required: bool = False
+    temp_token: Optional[str] = None
+
+
+class Verify2FARequest(BaseModel):
+    temp_token: str
+    code: str
+
+
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    otpauth_url: str
+
+
+class TwoFactorCodeRequest(BaseModel):
+    code: str
