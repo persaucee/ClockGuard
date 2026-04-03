@@ -193,7 +193,8 @@ async def verify(
     await db.commit()
 
     response_data = {
-        "match": {"employee_id": str(employee.id)},
+        "match": {"employee_id": str(employee.id),
+                  "name": employee.name},
         "similarity": float(similarity),
         "verified": similarity > SIMILARITY_THRESHOLD,
         "action": action,
