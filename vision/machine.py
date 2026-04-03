@@ -93,24 +93,46 @@ def check_liveness(frame, x,y,w,h):
     return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
+    
+    # 1. Get the true screen resolution
+    import tkinter as tk
+    temp_root = tk.Tk()
+    screen_w = temp_root.winfo_screenwidth()
+    screen_h = temp_root.winfo_screenheight()
+    temp_root.destroy()
+    
+    print(f"[SYSTEM] Detected Screen Resolution: {screen_w}x{screen_h}")
+
+    # 2. Setup the Camera (Let it use its default/max resolution)
     capture = cv2.VideoCapture(0)
+    # We ask for high resolution, but we don't care if it fails. We will center whatever it gives us.
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    capture.set(cv2.CAP_PROP_FPS, 60)
+    
+    cam_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    cam_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"[SYSTEM] Actual Camera Feed Size: {cam_w}x{cam_h}")
 
+    # 3. Calculate the centering offsets
+    # This finds the exact coordinates to paste the camera feed into the middle of the black screen
+    paste_x = (screen_w - cam_w) // 2
+    paste_y = (screen_h - cam_h) // 2
+
+    # 4. Calculate the targeting box relative to the CAMERA feed (not the screen)
     ROI_W, ROI_H = 450, 550
-    x_start = (1920 - ROI_W) // 2
-    y_start = (1080 - ROI_H) // 2
+    x_start = (cam_w - ROI_W) // 2
+    y_start = (cam_h - ROI_H) // 2
 
     start_Time = None
     duration = 2.0 
-
     captured_vectors = []
     MAX_SCANS = 5
     last_capture_time = 0 
-    
-    #set flag to know when to fully exit scanner mode and go back to dashboard
     exit_camera = False 
+
+    # 5. Tell OpenCV to create a window that allows fullscreen
+    cv2.namedWindow('ClockGuard CV Hub', cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty('ClockGuard CV Hub', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     print(f"\n LAUNCHING {mode.upper()} MODE")
 
@@ -211,6 +233,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                             if response.status_code == 200:
                                 data = response.json()
+                                print(f"\n[DEBUG JSON] RAW BACKEND DATA: {data}\n") # <--- ADD THIS LINE
                                 employee = data.get("match", {}).get("name", "Unknown")
                                 similarity = data.get("similarity", 0.0)
                                 # 200 green screen
@@ -240,7 +263,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                         # show in same window for 2 seconds
                         cv2.imshow('ClockGuard CV Hub', frame)
-                        cv2.waitKey(2000) 
+                        cv2.waitKey(5000) 
                        
                         start_Time = None 
                         break
@@ -254,7 +277,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if time.time() - last_capture_time > 1.0:
-                            is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                            is_live, conf, label_index = check_liveness(roi_frame, x, y, w, h)
                             if not is_live:
                                 print("[SYSTEM] Liveness not detected")
                                 cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),
@@ -318,7 +341,13 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
             cv2.putText(frame, "HURRY UP AND ALIGN YOUR FACE", (x_start, y_start + ROI_H + 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
-        cv2.imshow('ClockGuard CV Hub', frame)
+        background = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
+        
+        # 2. Paste the processed camera frame into the center of the black canvas
+        background[paste_y:paste_y+cam_h, paste_x:paste_x+cam_w] = frame
+        
+        # 3. Show the final combined fullscreen image
+        cv2.imshow('ClockGuard CV Hub', background)
         
         #lockscreen
         if cv2.waitKey(1) & 0xFF == ord('q'): 

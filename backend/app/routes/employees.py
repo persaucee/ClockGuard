@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 load_dotenv()
 router = APIRouter(prefix="/employees")
 
-SIMILARITY_THRESHOLD = 0.85
+SIMILARITY_THRESHOLD = 0.7
 
 # Endpoints
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
@@ -193,7 +193,8 @@ async def verify(
     await db.commit()
 
     response_data = {
-        "match": {"employee_id": str(employee.id)},
+        "match": {"employee_id": str(employee.id),
+                  "name": employee.name},
         "similarity": float(similarity),
         "verified": similarity > SIMILARITY_THRESHOLD,
         "action": action,
