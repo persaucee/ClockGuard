@@ -10,6 +10,25 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     message: Optional[str] = None
+    status_code: int = 200
+
+class RegisterData(BaseModel):
+    first_name: str
+    last_name: str
+
+class RegisterDataRequest(RegisterData):
+    username: str = Field(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
+    password: str = Field(min_length=8, max_length=72)
+    organization_name: str = Field(min_length=1, max_length=200)
+    open_time: Optional[time] = None
+    close_time: Optional[time] = None
+
+class RegisterDataResponse(RegisterData):
+    username: str
+    organization_id: UUID
+    organization_name: str
+    open_time: Optional[time]
+    close_time: Optional[time]
 
 class LoginData(BaseModel):
     username: str
@@ -83,8 +102,24 @@ class AttendanceRecordResponse(AttendanceRecordBase):
     pass
 
 
-# 2FA Schemas
+class PayrollSessionBase(BaseModel):
+    employee_id: UUID
+    shift_date: datetime
+    clock_in_time: Optional[datetime] = None
+    clock_out_time: Optional[datetime] = None
+    total_hours: Optional[float] = None
+    tip_amount: Optional[float] = None
+    total_pay: Optional[float] = None
 
+    model_config = ConfigDict(from_attributes=True)
+
+class PayrollSessionCreate(PayrollSessionBase):
+    pass
+    
+class PayrollSessionResponse(PayrollSessionBase):
+    id: UUID
+
+# 2FA Schemas
 class LoginResponseData(BaseModel):
     username: Optional[str] = None
     first_name: Optional[str] = None

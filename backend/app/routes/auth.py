@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from app.models.User import Admin
+from app.models.User import Admin, Organization
 
 from app.schemas import (
     APIResponse,
@@ -12,7 +12,11 @@ from app.schemas import (
     Verify2FARequest,
     TwoFactorSetupResponse,
     TwoFactorCodeRequest,
+    RegisterDataRequest, 
+    RegisterDataResponse,
 )
+
+from app.utils import create_response
 
 from app.security.two_factor import (
     create_temp_2fa_token,
@@ -24,7 +28,7 @@ from app.security.two_factor import (
 
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -62,6 +66,89 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     return encoded_jwt
 
 
+@router.post("/register")
+async def register(
+    form_data: RegisterDataRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    username = form_data.username.lower()
+
+    existing_user = await db.execute(
+        select(Admin).filter(Admin.username == username)
+    )
+    if existing_user.scalars().first():
+        return create_response(
+            success=False,
+            message="Username already exists",
+            status_code=400
+        )
+    hashed_password = await run_in_threadpool(
+        pwd_context.hash,
+        form_data.password
+    )
+    new_org = Organization(
+        name=form_data.organization_name,
+        default_open_time=form_data.open_time,
+        default_close_time=form_data.close_time
+    )
+    db.add(new_org)
+    await db.flush()
+    new_admin = Admin(
+        username=username,
+        password_hash=hashed_password,
+        first_name=form_data.first_name,
+        last_name=form_data.last_name,
+        organization_id=new_org.id
+    )
+    db.add(new_admin)
+    try:
+        await db.commit()
+    except:
+        await db.rollback()
+        raise
+    await db.refresh(new_org)
+    await db.refresh(new_admin)
+    access_token = create_access_token(
+        data={"sub": new_admin.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_refresh_token(
+        data={"sub": new_admin.username}
+    )
+
+    response_body = create_response(
+        success=True,
+        data=RegisterDataResponse(
+            username=new_admin.username,
+            first_name=new_admin.first_name,
+            last_name=new_admin.last_name,
+            organization_id=new_org.id,
+            organization_name=new_org.name,
+            open_time=new_org.default_open_time,
+            close_time=new_org.default_close_time
+        ),
+        message="User registered successfully"
+    )
+    # TODO: set secure=true in production
+    json_response = JSONResponse(content=jsonable_encoder(response_body))
+    json_response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+    )
+    json_response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="strict",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    )
+    return json_response
+
 # Endpoints
 @router.post("/login")
 async def login(form_data: LoginData, 
@@ -75,9 +162,10 @@ async def login(form_data: LoginData,
         is_valid = await run_in_threadpool(verify_password, form_data.password, user.password_hash)
 
     if not user or not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username and/or password"
+        return create_response(
+            success=False,
+            message="Incorrect username and/or password",
+            status_code=401
         )
 
     if user.two_factor_enabled:
@@ -242,18 +330,16 @@ async def refresh_token_endpoint(request: Request):
 
 @router.get("/me")
 async def read_users_me(current_user: dict = Depends(get_current_user)):
-    return APIResponse(
-        success=True,
-        data={
-            "username": current_user.username,
-            "first_name": current_user.first_name,
-            "last_name": current_user.last_name,
-            "organization_id": current_user.organization_id,
-            "two_factor_enabled": current_user.two_factor_enabled
-        },
+    return create_response(
+        success=True, 
+        data=UserData(
+            username=current_user.username, 
+            first_name=current_user.first_name, 
+            last_name=current_user.last_name, 
+            organization_id=current_user.organization_id
+        ),
         message="User info retrieved"
     )
-
 
 @router.post("/2fa/setup/initiate")
 async def initiate_2fa_setup(

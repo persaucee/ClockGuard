@@ -2,8 +2,6 @@ import uuid
 from typing import List
 import datetime
 
-from fastapi.responses import JSONResponse
-
 from app.models.User import AttendanceLog, Employee, PayrollSession
 from app.schemas import (
     APIResponse,
@@ -12,11 +10,13 @@ from app.schemas import (
     EmployeeUpdate,
     VerifyRequest,
 )
+from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.websockets.ws_router import org_ws_manager
 
 load_dotenv()
 router = APIRouter(prefix="/employees")
@@ -36,44 +36,6 @@ async def get_employees(current_user: dict = Depends(get_current_user),
         success=True,
         data=result.scalars().all(),
         message="Employees retrieved successfully")
-
-@router.put("/{employee_id}", response_model=APIResponse[EmployeeResponse])
-async def edit_employee(
-    employee_id: uuid.UUID,
-    employee: EmployeeUpdate,
-    current_user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(Employee).where(
-            Employee.id == employee_id,
-            Employee.organization_id == current_user.organization_id
-        )
-    )
-    employee_record = result.scalars().first()
-
-    if employee_record is None:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="Employee not found"
-            ).model_dump()
-        )
-
-    update_data = employee.dict(exclude_unset=True)
-
-    for field, value in update_data.items():
-        setattr(employee_record, field, value)
-
-    await db.commit()
-    await db.refresh(employee_record)
-
-    return APIResponse(
-        success=True,
-        data=employee_record,
-        message="Employee updated successfully"
-    )
 
 @router.post("/", response_model=APIResponse[EmployeeResponse])
 async def add_employee(
@@ -117,22 +79,18 @@ async def verify(
     result = await db.execute(stmt)
     row = result.first()
     if not row:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="No matching employee found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="No matching employee found",
+            status_code=404
         )
     employee, similarity = row
 
     if not employee or similarity < SIMILARITY_THRESHOLD:
-        return JSONResponse(
-            status_code=404,
-            content=APIResponse(
-                success=False,
-                message="No matching employee found"
-            ).model_dump()
+        return create_response(
+            success=False,
+            message="No matching employee found",
+            status_code=404
         )
 
     # Determine IN/OUT from last log
@@ -193,8 +151,11 @@ async def verify(
     await db.commit()
 
     response_data = {
-        "match": {"employee_id": str(employee.id),
-                  "name": employee.name},
+        "match": {
+            "employee_id": str(employee.id),
+            "name": employee.name,
+            "email": employee.email,
+        },
         "similarity": float(similarity),
         "verified": similarity > SIMILARITY_THRESHOLD,
         "action": action,
@@ -207,5 +168,52 @@ async def verify(
             "total_hours": payroll_session.total_hours,
             "total_pay": payroll_session.total_pay,
         }
+    await org_ws_manager.broadcast_to_org(
+        current_user.organization_id,
+        {
+            "event": "clock_event",
+            **response_data,
+        }
+    )
 
-    return response_data
+    return create_response(
+        success=True,
+        data=response_data,
+        message="Employee verified successfully"
+    )
+
+@router.put("/{employee_id}", response_model=APIResponse[EmployeeResponse])
+async def edit_employee(
+    employee_id: uuid.UUID,
+    employee: EmployeeUpdate,
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Employee).where(
+            Employee.id == employee_id,
+            Employee.organization_id == current_user.organization_id
+        )
+    )
+    employee_record = result.scalars().first()
+
+    if employee_record is None:
+        return create_response(
+            success=False,
+            message="Employee not found",
+            status_code=404
+        )
+
+    update_data = employee.dict(exclude_unset=True)
+
+    for field, value in update_data.items():
+        setattr(employee_record, field, value)
+
+    await db.commit()
+    await db.refresh(employee_record)
+
+    return APIResponse(
+        success=True,
+        data=employee_record,
+        message="Employee updated successfully"
+    )
