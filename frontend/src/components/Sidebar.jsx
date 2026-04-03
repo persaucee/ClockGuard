@@ -6,6 +6,7 @@ function Sidebar() {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: '📊' },
     { path: '/employees', label: 'Employees', icon: '👥' },
+    { path: '/attendance-logs', label: 'Attendance Logs', icon: '📋' },
     { path: '/settings', label: 'Settings', icon: '⚙️' }
   ];
 

@@ -5,6 +5,7 @@ import time
 import numpy as np
 from keras_facenet import FaceNet
 import requests 
+import threading
 
 
 api_session = requests.Session()
@@ -29,7 +30,7 @@ class PasswordDialog(ctk.CTkToplevel):
         
         ctk.CTkLabel(self, text=text, font=ctk.CTkFont(size=16)).pack(pady=(30, 10))
         
-        # Here is where we use show="*" securely!
+     
         self.entry = ctk.CTkEntry(self, show="*", width=250)
         self.entry.pack(pady=10)
         self.entry.focus()
@@ -50,37 +51,88 @@ class PasswordDialog(ctk.CTkToplevel):
     def get_input(self):
         return self.password
 def load_ai():
-    global embedder, face_cascade
+    global embedder, face_net_dnn, liveness_net
     if embedder is None:
         print("\n[SYSTEM] Loading classifier")
         embedder = FaceNet()
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        face_net_dnn = cv2.dnn.readNetFromCaffe("./models/deploy.prototxt", "./models/res10_300x300_ssd_iter_140000.caffemodel")
+        liveness_net = cv2.dnn.readNetFromONNX("./models/2.7_80x80_MiniFASNetV2.onnx")
         print("[SYSTEM] Done Loading\n")
 #===============
 #camera logic
 #================
+# This is the antispoofer with lightweight MiniFASNetV2, lightweight CNN
+
+def check_liveness(frame, x,y,w,h):
+    scale = 2.7 #this scales to 80x80 from the face crop
+    center_x, center_y = x + w//2, y + h//2 #center of the detected face
+    new_w, new_h = int(w * scale), int(h * scale) #new dimensions
+
+    start_x = max(0, center_x-new_w//2)
+    start_y = max(0, center_y -new_h//2)
+    end_x = min(frame.shape[1], center_x + new_w//2)
+    end_y = min(frame.shape[0], center_y + new_h//2)
+
+    face_crop = frame[start_y:end_y, start_x:end_x]
+
+    if face_crop.size == 0:
+        return False, 0.0
+    blob = cv2.dnn.blobFromImage(face_crop, scalefactor=1.0, size=(80, 80), mean=(0, 0, 0), swapRB=False, crop=False)
+    liveness_net.setInput(blob)
+    preds = liveness_net.forward()
+    raw_scores = preds[0]
+    exp_scores = np.exp(raw_scores - np.max(raw_scores))
+    softmax_scores = exp_scores / np.sum(exp_scores)
+    
+    label_index = np.argmax(softmax_scores)
+    conf = softmax_scores[label_index]
+
+   #if label index is one then its a real face
+    is_live = (label_index == 1) and (conf > 0.60)
+    
+    return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     emp_name = emp_data["name"] if emp_data else ""
-    load_ai() 
+    
+    # 1. Get the true screen resolution
+    import tkinter as tk
+    temp_root = tk.Tk()
+    screen_w = temp_root.winfo_screenwidth()
+    screen_h = temp_root.winfo_screenheight()
+    temp_root.destroy()
+    
+    print(f"[SYSTEM] Detected Screen Resolution: {screen_w}x{screen_h}")
 
+    # 2. Setup the Camera (Let it use its default/max resolution)
     capture = cv2.VideoCapture(0)
+    # We ask for high resolution, but we don't care if it fails. We will center whatever it gives us.
     capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    capture.set(cv2.CAP_PROP_FPS, 60)
+    
+    cam_w = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+    cam_h = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    print(f"[SYSTEM] Actual Camera Feed Size: {cam_w}x{cam_h}")
 
+    # 3. Calculate the centering offsets
+    # This finds the exact coordinates to paste the camera feed into the middle of the black screen
+    paste_x = (screen_w - cam_w) // 2
+    paste_y = (screen_h - cam_h) // 2
+
+    # 4. Calculate the targeting box relative to the CAMERA feed (not the screen)
     ROI_W, ROI_H = 450, 550
-    x_start = (1920 - ROI_W) // 2
-    y_start = (1080 - ROI_H) // 2
+    x_start = (cam_w - ROI_W) // 2
+    y_start = (cam_h - ROI_H) // 2
 
     start_Time = None
     duration = 2.0 
-
     captured_vectors = []
     MAX_SCANS = 5
     last_capture_time = 0 
-    
-    #set flag to know when to fully exit scanner mode and go back to dashboard
     exit_camera = False 
+
+    # 5. Tell OpenCV to create a window that allows fullscreen
+    cv2.namedWindow('ClockGuard CV Hub', cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty('ClockGuard CV Hub', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     print(f"\n LAUNCHING {mode.upper()} MODE")
 
@@ -89,12 +141,33 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
         if not ret: break
 
         roi_frame = frame[y_start:y_start+ROI_H, x_start:x_start+ROI_W]
-        gray_roi = cv2.cvtColor(roi_frame, cv2.COLOR_BGR2GRAY)
+        (h, w) = frame.shape[:2]
+        blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300), (104.0, 177.0, 123.0))
+        face_net_dnn.setInput(blob)
+        detections = face_net_dnn.forward()
+        faces = []
+        match = None
+        max_area = 0
+        for i in range(0, detections.shape[2]):
+            confidence = detections[0, 0, i, 2]
+            if confidence > 0.60:
+                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                (x, y, x1, y1) = box.astype("int")
+                rel_x = x - x_start
+                rel_y = y - y_start
+                fw= x1 - x
+                fh = y1 - y
+                
+                if rel_x > -50 and rel_y > -50 and rel_x + fw < ROI_W +50 and rel_y + fh < ROI_H + 50:
+                   area = fw * fh
+                   if area > max_area:
+                        max_area = area
+                        match = (rel_x, rel_y, fw, fh) 
 
-        faces = face_cascade.detectMultiScale(
-            gray_roi, scaleFactor=1.1, minNeighbors=12, minSize=(200, 200)
-        )
-
+        if match is not None:
+            faces = [match]
+        else: 
+            faces = []
         cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (192, 192, 192), 2)
         
         header_text = f"Registering: {emp_name}" if mode == "register" else "Live Scanner: Please Align Face"
@@ -124,6 +197,24 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                 else:
                     # Scanner Mode
                     if mode == "scanner":
+                        is_live, conf, label_index = check_liveness(roi_frame, x, y, w, h)
+                        if not is_live:
+                            print(f"[DEBUG LIVENESS] Spoof Detected - Class: {label_index} | Confidence: {conf:.2f}")
+                            cv2.putText(frame, "LIVENESS FAILED", (x_start + 80, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                            cv2.imshow('ClockGuard CV Hub', frame)
+                            cv2.waitKey(1500)
+                            start_Time = None
+                            break
+
+                        # procccesing screen
+                        cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 0), 2)
+                        cv2.putText(frame, "VERIFYING BIOMETRICS...", (x_start + 20, y_start + ROI_H // 2), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+                        cv2.imshow('ClockGuard CV Hub', frame)
+                        cv2.waitKey(10) # force the screen to update
+
+                        # evaluate vector
                         face_crop = roi_frame[y:y+h, x:x+w]
                         face_160x160 = cv2.resize(face_crop, (160, 160))
                         face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
@@ -132,52 +223,49 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                         raw_vector = embedder.embeddings(samples)[0]
                         norm_vector = raw_vector / np.linalg.norm(raw_vector)
                         vector_512 = norm_vector.tolist()
-                        #====================
-                        #now verify face embed, this needs to be changed in the future for payroll etc
-                        #====================
+                        
                         print("\n[API] Verifying scanned face...")
-                        payload = {"embedding": vector_512, "organization_id": org_id } #this is whats send through the /verify endpoint
-
+                        payload = {"embedding": vector_512, "organization_id": org_id }
+                        
+                        # api call
                         try:
                             response = api_session.post(f"{BACKEND_URL}/employees/verify", json=payload)
 
                             if response.status_code == 200:
                                 data = response.json()
-                                employee = data.get("match", {}).get("name", "Unknown")
+                                employee = data.get("name", "Unknown")
                                 similarity = data.get("similarity", 0.0)
-
-                                print(f"[API] YAAAY WE GOT A MATCH YOURE IN THE SYSTEM {employee}! the scan found your face to me {similarity:.2f} similar")
-
-                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 255, 0), 4)
-                                cv2.putText(frame, f"WELCOME, {emp_name.upper()}!", (x_start + 20, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 3)
+                                # 200 green screen
+                                overlay = frame.copy()
+                                cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 255, 0), -1)
+                                cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame) # 30% transparent green tint
+                                
+                                cv2.putText(frame, f"WELCOME, {employee.upper()}!", (x_start - 30, y_start + ROI_H // 2), 
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                                print(f"[API] Match found: {employee}, similarity: {similarity:.2f}")
 
                             elif response.status_code == 404:
-                                print("[API] Face not recognized")
-
-                                cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (0, 0, 255), 4)
+                                # 404 red screen
+                                data = response.json()
+                                overlay = frame.copy()
+                                similarity = data.get("similarity", 0.0)
+                                cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 0, 255), -1)
+                                cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame) # 
+                                
                                 cv2.putText(frame, "ACCESS DENIED", (x_start + 80, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 0, 255), 3)
-
-                            else:
-                                #error 500 internal error
-                                print(f"[API] Server Error: {response.text}")
-                                cv2.putText(frame, "SERVER ERROR", (x_start + 90, y_start + ROI_H // 2), 
-                                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+                                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
+                                print(f"[API] Face not recognized, similarity: {similarity:.2f}")
 
                         except requests.exceptions.ConnectionError:
-                            print("[API] Connection Failed")
                             cv2.putText(frame, "CONNECTION FAILED", (x_start + 40, y_start + ROI_H // 2), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 3)
 
-                        # Freeze for 1 second so they can read it
-                        cv2.imshow('Clockguard hub!', frame)
-                        cv2.waitKey(1000) 
+                        # show in same window for 2 seconds
+                        cv2.imshow('ClockGuard CV Hub', frame)
+                        cv2.waitKey(2000) 
                        
-                        #fix
                         start_Time = None 
-                        break 
-
+                        break
                     # Registration
                     elif mode == "register":
                         cv2.putText(frame, f"Capturing {len(captured_vectors)}/5...", 
@@ -188,6 +276,15 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
                         if time.time() - last_capture_time > 1.0:
+                            is_live, conf = check_liveness(roi_frame, x, y, w, h)
+                            if not is_live:
+                                print("[SYSTEM] Liveness not detected")
+                                cv2.putText(frame, f"Not Live: {conf:.2f}", (fx, fy - 10),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                                cv2.imshow('ClockGuard CV Hub', frame)
+                                cv2.waitKey(2000)
+                                continue
+                            
                             face_crop = roi_frame[y:y+h, x:x+w].copy()
                             #white flash thing mimimm
                             cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 255), -1)
@@ -243,7 +340,13 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
             cv2.putText(frame, "HURRY UP AND ALIGN YOUR FACE", (x_start, y_start + ROI_H + 30), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 1)
 
-        cv2.imshow('ClockGuard CV Hub', frame)
+        background = np.zeros((screen_h, screen_w, 3), dtype=np.uint8)
+        
+        # 2. Paste the processed camera frame into the center of the black canvas
+        background[paste_y:paste_y+cam_h, paste_x:paste_x+cam_w] = frame
+        
+        # 3. Show the final combined fullscreen image
+        cv2.imshow('ClockGuard CV Hub', background)
         
         #lockscreen
         if cv2.waitKey(1) & 0xFF == ord('q'): 
@@ -281,6 +384,8 @@ ctk.set_default_color_theme("blue")
 class KioskHubApp(ctk.CTk):
     def __init__(self, is_locked=False):
         super().__init__()
+        print("[SYSTEM] loading ai models")
+        load_ai()
         self.is_locked = is_locked
         self.title("ClockGuard Scanner System")
         #set lock mode

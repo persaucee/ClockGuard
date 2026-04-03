@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 load_dotenv()
 router = APIRouter(prefix="/employees")
 
-SIMILARITY_THRESHOLD = 0.85
+SIMILARITY_THRESHOLD = 0.7
 
 # Endpoints
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
