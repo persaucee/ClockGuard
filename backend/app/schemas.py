@@ -102,6 +102,13 @@ class AttendanceRecordResponse(AttendanceRecordBase):
     pass
 
 
+class ClockStatusData(BaseModel):
+    clocked_in: list[EmployeeResponse]
+    inactive: list[EmployeeResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PayrollSessionBase(BaseModel):
     employee_id: UUID
     shift_date: datetime
