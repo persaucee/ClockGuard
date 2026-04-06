@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import date
 import uuid
 from typing import List, Optional
@@ -6,7 +7,7 @@ from app.models.User import Employee, PayrollSession
 from app.schemas import APIResponse, PayrollSessionCreate, PayrollSessionResponse
 from app.utils import send_payroll_email, create_response
 from dependencies import get_current_user, get_db
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks
@@ -81,9 +82,9 @@ async def process_payroll(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
-    payroll_ids: Optional[List[uuid.UUID]] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
+    start_date: Optional[date] = Query(default=None),
+    end_date: Optional[date] = Query(default=None),
+    payroll_ids: Optional[List[uuid.UUID]] = Body(default=None),
 ) -> JSONResponse:
 
     if (start_date is None) != (end_date is None):
@@ -105,42 +106,57 @@ async def process_payroll(
         )
     )
     employees = emp_result.scalars().all()
+    session_filter = [
+        PayrollSession.employee_id.in_([e.id for e in employees]),
+        PayrollSession.processed == False,
+    ]
+
+    if payroll_ids:
+        session_filter.append(PayrollSession.id.in_(payroll_ids))
+    elif start_date and end_date:
+        session_filter.append(PayrollSession.shift_date >= start_date)
+        session_filter.append(PayrollSession.shift_date <= end_date)
+
+    session_result = await db.execute(select(PayrollSession).with_for_update().where(*session_filter))
+    sessions_by_employee = defaultdict(list)
+    for s in session_result.scalars().all():
+        sessions_by_employee[s.employee_id].append(s)
+
     tasks_queued = 0
+    pending_emails = []
+
     for employee in employees:
-        session_filter = [
-            PayrollSession.employee_id == employee.id,
-            PayrollSession.processed == False,
-        ]
-
-        if payroll_ids:
-            session_filter.append(PayrollSession.id.in_(payroll_ids))
-        elif start_date and end_date:
-            session_filter.append(PayrollSession.shift_date >= start_date)
-            session_filter.append(PayrollSession.shift_date <= end_date)
-
-        session_result = await db.execute(select(PayrollSession).where(*session_filter))
-        sessions = session_result.scalars().all()
-        total_hours = sum(s.total_hours for s in sessions)
-        total_tips = sum(s.tip_amount for s in sessions)
-        for session in sessions:
-            session.processed = True
-        
+        if employee.hourly_rate is None or not employee.email:
+            continue
+        sessions = sessions_by_employee.get(employee.id, [])
+        total_hours = sum(s.total_hours or 0 for s in sessions)
+        total_tips = sum(s.tip_amount or 0 for s in sessions)
         if total_hours == 0 and total_tips == 0:
             continue
-        
-        
+        if not employee.hourly_rate or not employee.email:
+            continue
         total_pay = (total_hours * employee.hourly_rate) + total_tips
-        background_tasks.add_task(
-            send_payroll_email, employee.email, total_pay, total_hours
-        )
+        pending_emails.append((employee.email, total_pay, total_hours))
+        for session in sessions:
+            session.processed = True
+
         tasks_queued += 1
-        
-    await db.commit()
+
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
+
+    for email, total_pay, total_hours in pending_emails:
+        background_tasks.add_task(send_payroll_email, email, total_pay, total_hours)
+
     return create_response(
         success=True,
         message=f"Payroll processing initiated for {tasks_queued} employee(s)."
     )
 
+#TODO: debug endpoint, will remove in prod
 @router.post("/email/{employee_id}", response_model=APIResponse)
 async def send_email(
     employee_id: uuid.UUID,
