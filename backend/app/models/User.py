@@ -104,6 +104,10 @@ class AttendanceLog(Base):
     )
     employee = relationship("Employee", back_populates="attendance_logs")
 
+    @property
+    def employee_name(self) -> str:
+        return self.employee.name
+
 class PayrollSession(Base):
     __tablename__ = "payroll_sessions"
 
@@ -124,3 +128,7 @@ class PayrollSession(Base):
     requires_admin_review = Column(Boolean, nullable=False, server_default="false")
 
     employee = relationship("Employee", back_populates="payroll_sessions")
+
+    @property
+    def employee_name(self) -> str:
+        return self.employee.name

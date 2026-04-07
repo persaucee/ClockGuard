@@ -1,16 +1,18 @@
 import uuid
 from typing import List
 
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, datetime, timezone, timedelta, time
 from typing import Optional, List
 from sqlalchemy.orm import joinedload
 from app.models.User import PayrollSession, Employee, AttendanceLog
 from app.schemas import (
     APIResponse,
     AttendanceRecordResponse,
+    PayrollSessionResponse,
     EmployeeResponse,
     ClockStatusData,
 )
+from app.utils import create_response
 from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -20,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/attendance")
 
-@router.get("/logs", response_model=APIResponse[List[AttendanceRecordResponse]])
+@router.get("/logs", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_attendance_records(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
@@ -44,20 +46,11 @@ async def get_attendance_records(
     result = await db.execute(query)
     records = result.scalars().unique().all()
 
-    data = [
-        AttendanceRecordResponse(
-            id=r.id,
-            employee_name=r.employee.name,
-            clock_in_time=r.clock_in_time,
-            clock_out_time=r.clock_out_time,
-            total_hours=r.total_hours,
-        )
-        for r in records
-    ]
+    data = [PayrollSessionResponse.model_validate(r) for r in records]
 
-    return APIResponse(success=True, data=data, message="Attendance records retrieved successfully")
+    return create_response(success=True, data=data, message="Attendance records retrieved successfully")
 
-@router.get("/logs/{employee_id}", response_model=APIResponse[List[AttendanceRecordResponse]])
+@router.get("/logs/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_attendance_records(
     employee_id: uuid.UUID,
     start_date: Optional[date] = Query(None),
@@ -85,19 +78,37 @@ async def get_employee_attendance_records(
     result = await db.execute(query)
     records = result.scalars().unique().all()
 
-    data = [
-        AttendanceRecordResponse(
-            id=r.id,
-            employee_name=r.employee.name,
-            clock_in_time=r.clock_in_time,
-            clock_out_time=r.clock_out_time,
-            total_hours=r.total_hours,
-        )
-        for r in records
-    ]
+    data = [PayrollSessionResponse.model_validate(r) for r in records]
 
-    return APIResponse(success=True, data=data, message="Attendance records retrieved successfully")
+    return create_response(success=True, data=data, message="Attendance records retrieved successfully")
 
+@router.get("/attendance-logs", response_model=APIResponse[List[AttendanceRecordResponse]])
+async def get_attendance_logs(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(AttendanceLog)
+        .join(AttendanceLog.employee)
+        .options(joinedload(AttendanceLog.employee))
+        .where(Employee.organization_id == current_user.organization_id)
+    )
+
+    if start_date:
+        query = query.where(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
+    if end_date:
+        query = query.where(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+
+    query = query.order_by(AttendanceLog.timestamp.desc())
+
+    result = await db.execute(query)
+    logs = result.scalars().unique().all()
+
+    data = [AttendanceRecordResponse.model_validate(log) for log in logs]
+
+    return create_response(success=True, data=data, message="Attendance logs retrieved successfully")
 
 @router.get("/status", response_model=APIResponse[ClockStatusData])
 async def get_attendance_status(

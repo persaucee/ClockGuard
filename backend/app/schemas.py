@@ -1,10 +1,14 @@
-from datetime import datetime, time
+from datetime import date, datetime, time
 from typing import Generic, Optional, TypeVar
 from uuid import UUID
-
+from enum import Enum
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 T = TypeVar("T")
+
+class Action(str, Enum):
+    IN = "IN"
+    OUT = "OUT"
 
 class APIResponse(BaseModel, Generic[T]):
     success: bool
@@ -92,9 +96,8 @@ class OrganizationResponse(OrganizationBase):
 class AttendanceRecordBase(BaseModel):
     id: UUID
     employee_name: str
-    clock_in_time: Optional[datetime] = None
-    clock_out_time: Optional[datetime] = None
-    total_hours: Optional[float] = None
+    action: Action
+    timestamp: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,21 +113,24 @@ class ClockStatusData(BaseModel):
 
 
 class PayrollSessionBase(BaseModel):
-    employee_id: UUID
-    shift_date: datetime
-    clock_in_time: Optional[datetime] = None
-    clock_out_time: Optional[datetime] = None
-    total_hours: Optional[float] = None
+    shift_date: date
+    clock_in_time: datetime
+    clock_out_time: datetime
     tip_amount: Optional[float] = None
-    total_pay: Optional[float] = None
-
-    model_config = ConfigDict(from_attributes=True)
 
 class PayrollSessionCreate(PayrollSessionBase):
     pass
     
 class PayrollSessionResponse(PayrollSessionBase):
     id: UUID
+    employee_id: UUID
+    employee_name: str
+    processed: bool
+    requires_admin_review: bool
+    total_hours: float
+    total_pay: float
+
+    model_config = ConfigDict(from_attributes=True)
 
 # 2FA Schemas
 class LoginResponseData(BaseModel):
