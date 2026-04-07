@@ -157,30 +157,6 @@ async def process_payroll(
         message=f"Payroll processing initiated for {tasks_queued} employee(s)."
     )
 
-#TODO: debug endpoint, will remove in prod
-@router.post("/email/{employee_id}", response_model=APIResponse)
-async def send_email(
-    employee_id: uuid.UUID,
-    total_pay: float,
-    total_hours: float,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-) -> JSONResponse:
-    employee = await db.execute(select(Employee).where(Employee.id == employee_id, Employee.organization_id == current_user.organization_id))
-    employee = employee.scalar_one_or_none()
-    if not employee:
-        return create_response(
-            success=False,
-            message="Employee not found",
-            status_code=404
-        )
-    background_tasks.add_task(send_payroll_email, employee.email, total_pay, total_hours)
-    return create_response(
-        success=True,
-        message="Payroll email sent successfully"
-    )
-
 @router.get("/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_payroll_sessions(
     employee_id: uuid.UUID,
