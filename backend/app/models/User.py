@@ -2,7 +2,7 @@ import uuid
 
 from app.database import Base
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import TIMESTAMP, Boolean, Column, Enum, Float, ForeignKey, String, func, Date, Time, Integer
+from sqlalchemy import TIMESTAMP, Boolean, Column, Enum, Float, ForeignKey, String, func, Date, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship
 class Admin(Base):
     __tablename__ = "admins"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
     username = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(60), nullable=False)
 
