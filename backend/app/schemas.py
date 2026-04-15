@@ -48,28 +48,24 @@ class UserData(BaseModel):
 #Employee Schemas
 
 class EmployeeBase(BaseModel):
-    name: Optional[str] = None
+    name: str
     hourly_rate: Optional[float] = None
     email: Optional[EmailStr] = None
 
 class EmployeeCreate(EmployeeBase):
     embedding: list[float] = Field(min_length=512, max_length=512)
 
-class EmployeeUpdate(BaseModel):
-    name: Optional[str] = None
-    hourly_rate: Optional[float] = None
-    email: Optional[EmailStr] = None
+class EmployeeUpdate(EmployeeBase):
+    pass
 
 class EmployeeResponse(EmployeeBase):
     id: UUID
-    organization_id: UUID
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
 
 class VerifyRequest(BaseModel):
     embedding: list[float] = Field(min_length=512, max_length=512)
-    action: Optional[str] = "IN"
     
 class OrganizationBase(BaseModel):
     default_open_time: Optional[time] = None

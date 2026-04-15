@@ -82,7 +82,7 @@ async def get_employee_attendance_records(
 
     return create_response(success=True, data=data, message="Attendance records retrieved successfully")
 
-@router.get("/attendance-logs", response_model=APIResponse[List[AttendanceRecordResponse]])
+@router.get("/clock-logs", response_model=APIResponse[List[AttendanceRecordResponse]])
 async def get_attendance_logs(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
@@ -94,6 +94,38 @@ async def get_attendance_logs(
         .join(AttendanceLog.employee)
         .options(joinedload(AttendanceLog.employee))
         .where(Employee.organization_id == current_user.organization_id)
+    )
+
+    if start_date:
+        query = query.where(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
+    if end_date:
+        query = query.where(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+
+    query = query.order_by(AttendanceLog.timestamp.desc())
+
+    result = await db.execute(query)
+    logs = result.scalars().unique().all()
+
+    data = [AttendanceRecordResponse.model_validate(log) for log in logs]
+
+    return create_response(success=True, data=data, message="Attendance logs retrieved successfully")
+
+@router.get("/clock-logs/{employee_id}", response_model=APIResponse[List[AttendanceRecordResponse]])
+async def get_attendance_logs(
+    employee_id: uuid.UUID,
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    query = (
+        select(AttendanceLog)
+        .join(AttendanceLog.employee)
+        .options(joinedload(AttendanceLog.employee))
+        .where(
+            Employee.organization_id == current_user.organization_id,
+            AttendanceLog.employee_id == employee_id
+            )
     )
 
     if start_date:

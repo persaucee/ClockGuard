@@ -22,7 +22,7 @@ async_engine = create_async_engine(
     ASYNC_DB_URL,
     pool_size=8,
     max_overflow=5,
-    pool_pre_ping=False,
+    pool_pre_ping=True,
     pool_recycle=300,
     echo=False
 )
