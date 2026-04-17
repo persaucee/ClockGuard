@@ -136,7 +136,6 @@ async def verify(
                 .where(
                     AttendanceLog.employee_id == employee.id,
                     AttendanceLog.action == "IN",
-                    AttendanceLog.organization_id == current_user.organization_id
                 )
                 .order_by(AttendanceLog.timestamp.desc())
                 .limit(1)
