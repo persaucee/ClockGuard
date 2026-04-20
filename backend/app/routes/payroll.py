@@ -157,6 +157,30 @@ async def process_payroll(
         message=f"Payroll processing initiated for {tasks_queued} employee(s)."
     )
 
+@router.get("/", response_model=APIResponse[List[List[PayrollSessionResponse]]])
+async def get_all_payroll_sessions(
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user)
+) -> JSONResponse:
+    result = await db.execute(
+        select(PayrollSession)
+        .join(PayrollSession.employee)
+        .options(joinedload(PayrollSession.employee))
+        .where(Employee.organization_id == current_user.organization_id)
+        .order_by(Employee.name, PayrollSession.shift_date.desc())
+    )
+    sessions = result.scalars().all()
+    sessions_by_employee = defaultdict(list)
+    for s in sessions:
+        sessions_by_employee[s.employee_id].append(PayrollSessionResponse.model_validate(s))
+
+    response_data = list(sessions_by_employee.values())
+    return create_response(
+        success=True,
+        data=response_data,
+        message="Payroll sessions retrieved successfully"
+    )
+
 @router.get("/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_payroll_sessions(
     employee_id: uuid.UUID,
