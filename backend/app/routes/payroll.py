@@ -12,6 +12,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks
+import math
 
 router = APIRouter(prefix="/payroll")
 
@@ -20,6 +21,8 @@ async def get_payroll_report(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     processed: Optional[bool] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ) -> JSONResponse:
@@ -39,7 +42,7 @@ async def get_payroll_report(
     if processed is not None:
         query_filters.append(PayrollSession.processed == processed)
     
-    result = await db.execute(
+    result = (
         select(
             Employee.id.label("employee_id"),
             Employee.name.label("employee_name"),
@@ -56,6 +59,12 @@ async def get_payroll_report(
         .order_by(Employee.name)
     )
 
+    count_q = select(func.count()).select_from(result.subquery())
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
+    offset = (page - 1) * page_size
+    result = await db.execute(result.limit(page_size).offset(offset))
     rows = result.all()
 
     report_data = [
@@ -71,11 +80,13 @@ async def get_payroll_report(
         }
         for row in rows
     ]
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
     return create_response(
         success=True,
         data=report_data,
         message="Payroll report retrieved successfully",
-        status_code=200
+        status_code=200,
+        meta=meta
     )
 
 @router.post("/process", response_model=APIResponse)
@@ -160,14 +171,26 @@ async def process_payroll(
 @router.get("/", response_model=APIResponse[List[List[PayrollSessionResponse]]])
 async def get_all_payroll_sessions(
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
 ) -> JSONResponse:
+
+    count_q = select(func.count()).select_from(PayrollSession).join(PayrollSession.employee).where(Employee.organization_id == current_user.organization_id)
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
+
+    offset = (page - 1) * page_size
+
     result = await db.execute(
         select(PayrollSession)
         .join(PayrollSession.employee)
         .options(joinedload(PayrollSession.employee))
         .where(Employee.organization_id == current_user.organization_id)
         .order_by(Employee.name, PayrollSession.shift_date.desc())
+        .limit(page_size)
+        .offset(offset)
     )
     sessions = result.scalars().all()
     sessions_by_employee = defaultdict(list)
@@ -175,36 +198,54 @@ async def get_all_payroll_sessions(
         sessions_by_employee[s.employee_id].append(PayrollSessionResponse.model_validate(s))
 
     response_data = list(sessions_by_employee.values())
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
     return create_response(
         success=True,
         data=response_data,
-        message="Payroll sessions retrieved successfully"
+        message="Payroll sessions retrieved successfully",
+        meta=meta
     )
 
 @router.get("/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_payroll_sessions(
     employee_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
 ) -> JSONResponse:
+
+    filters = [
+        PayrollSession.employee_id == employee_id,
+        Employee.organization_id == current_user.organization_id,
+    ]
+
+    count_q = select(func.count()).select_from(PayrollSession).join(PayrollSession.employee).where(*filters)
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
+
+    offset = (page - 1) * page_size
     result = await db.execute(
         select(PayrollSession)
         .join(PayrollSession.employee)
         .options(joinedload(PayrollSession.employee))
-        .where(
-            PayrollSession.employee_id == employee_id,
-            Employee.organization_id == current_user.organization_id
-        )
+        .where(*filters)
+        .order_by(PayrollSession.shift_date.desc())
+        .limit(page_size)
+        .offset(offset)
     )
     sessions = result.scalars().all()
     sessions_response = [
         PayrollSessionResponse.model_validate(s)
         for s in sessions
     ]
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
     return create_response(
         success=True,
         data=sessions_response,
-        message="Payroll sessions retrieved successfully"
+        message="Payroll sessions retrieved successfully",
+        meta=meta
     )
 
 @router.put("/{session_id}", response_model=APIResponse[PayrollSessionResponse])

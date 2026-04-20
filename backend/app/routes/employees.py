@@ -13,8 +13,8 @@ from app.schemas import (
 from app.utils import create_response
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from app.websockets.ws_router import org_ws_manager
@@ -27,17 +27,36 @@ EMBEDDING_DIM = 512
 
 # Endpoints
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
-async def get_employees(current_user: dict = Depends(get_current_user), 
-                        db: AsyncSession = Depends(get_db)):
+async def get_employees(
+    current_user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+):
+    filters = (Employee.organization_id == current_user.organization_id,)
+
+    count_q = select(func.count()).select_from(Employee).where(*filters)
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+
+    total_pages = (total_items + page_size - 1) // page_size if page_size else 0
+    offset = (page - 1) * page_size
+
     result = await db.execute(
-        select(Employee).where(
-            Employee.organization_id == current_user.organization_id
-        )
+        select(Employee)
+        .where(*filters)
+        .order_by(Employee.id)
+        .limit(page_size)
+        .offset(offset)
     )
-    return APIResponse(
-        success=True,
-        data=result.scalars().all(),
-        message="Employees retrieved successfully")
+
+    items = result.scalars().all()
+
+    final_data = [EmployeeResponse.model_validate(r) for r in items]
+
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
+
+    return create_response(success=True, data=final_data, message="Employees retrieved successfully", meta=meta)
 
 @router.post("/", response_model=APIResponse[EmployeeResponse])
 async def add_employee(
