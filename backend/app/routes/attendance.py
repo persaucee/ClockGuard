@@ -122,7 +122,7 @@ async def get_employee_attendance_records(
     return create_response(success=True, data=data, message="Attendance records retrieved successfully", meta=meta)
 
 @router.get("/clock-logs", response_model=APIResponse[List[AttendanceRecordResponse]])
-async def get_attendance_logs(
+async def get_all_attendance_logs(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     page: int = Query(1, ge=1),
