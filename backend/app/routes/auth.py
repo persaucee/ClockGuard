@@ -116,21 +116,20 @@ async def register(
         data={"sub": new_admin.username}
     )
 
-    response_body = create_response(
-        success=True,
-        data=RegisterDataResponse(
-            username=new_admin.username,
-            first_name=new_admin.first_name,
-            last_name=new_admin.last_name,
-            organization_id=new_org.id,
-            organization_name=new_org.name,
-            open_time=new_org.default_open_time,
-            close_time=new_org.default_close_time
-        ),
-        message="User registered successfully"
-    )
+    json_response = create_response(
+    success=True,
+    data=RegisterDataResponse(
+        username=new_admin.username,
+        first_name=new_admin.first_name,
+        last_name=new_admin.last_name,
+        organization_id=new_org.id,
+        organization_name=new_org.name,
+        open_time=new_org.default_open_time,
+        close_time=new_org.default_close_time
+    ),
+    message="User registered successfully"
+)
     # TODO: set secure=true in production
-    json_response = JSONResponse(content=jsonable_encoder(response_body))
     json_response.set_cookie(
         key="refresh_token",
         value=refresh_token,
