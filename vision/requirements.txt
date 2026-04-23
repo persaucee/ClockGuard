@@ -1,0 +1,6 @@
+customtkinter
+opencv-python
+numpy
+keras-facenet
+tensorflow
+requests
