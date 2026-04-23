@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.scheduler import start_scheduler, stop_scheduler
@@ -16,7 +18,13 @@ async def lifespan(app: FastAPI):
     finally:
         stop_scheduler()
 
-app = FastAPI(root_path="/api", lifespan=lifespan)
+IS_PROD = os.getenv("IS_PROD") == "true"
+
+app = FastAPI(root_path="/api", lifespan=lifespan,
+            docs_url=None if IS_PROD else "/docs",
+            redoc_url=None if IS_PROD else "/redoc",
+            openapi_url=None if IS_PROD else "/openapi.json",
+)
 
 origins = [
     "http://localhost:5173",
