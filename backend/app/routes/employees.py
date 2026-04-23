@@ -1,6 +1,6 @@
 import uuid
 from typing import List
-import datetime
+from datetime import datetime, timezone
 
 from app.models.User import AttendanceLog, Employee, PayrollSession
 from app.schemas import (
@@ -16,12 +16,14 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 from app.websockets.ws_router import org_ws_manager
 
 load_dotenv()
 router = APIRouter(prefix="/employees")
 
 SIMILARITY_THRESHOLD = 0.7
+EMBEDDING_DIM = 512
 
 # Endpoints
 @router.get("/", response_model=APIResponse[List[EmployeeResponse]])
@@ -43,19 +45,27 @@ async def add_employee(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    
-    employee_data = employee.model_dump()
-    employee_data["organization_id"] = current_user.organization_id
-    employee_record = Employee(**employee_data)
-    db.add(employee_record)
-    await db.commit()
-    await db.refresh(employee_record)
+    try:
+        employee_data = employee.model_dump()
+        employee_data["organization_id"] = current_user.organization_id
+        employee_record = Employee(**employee_data)
+        db.add(employee_record)
+        await db.commit()
+        await db.refresh(employee_record)
 
-    return APIResponse(
-        success=True,
-        data=employee_record,
-        message="Employee added successfully"
-    )
+        return APIResponse(
+            success=True,
+            data=employee_record,
+            message="Employee added successfully"
+        )
+
+    except SQLAlchemyError:
+        await db.rollback()
+        return APIResponse(
+            success=False,
+            data=None,
+            message="Failed to add employee"
+        )
 
 @router.post("/verify")
 async def verify(
@@ -64,6 +74,12 @@ async def verify(
     db: AsyncSession = Depends(get_db)
 ):
     input_vector = request.embedding
+    if len(input_vector) != EMBEDDING_DIM:
+        return create_response(
+            success=False,
+            message=f"Invalid embedding vector length, expected {EMBEDDING_DIM}, but got {len(input_vector)}",
+            status_code=400
+        )
 
     #Postgres statement to calculate cosine similarity and return the most similar employee
     stmt = (
@@ -99,56 +115,64 @@ async def verify(
         .where(AttendanceLog.employee_id == employee.id)
         .order_by(AttendanceLog.timestamp.desc())
         .limit(1)
+        .with_for_update()
     )
     last_log = last_log_result.scalars().first()
-
+    
     action = "OUT" if (last_log and last_log.action == "IN") else "IN"
-    attendance_log = AttendanceLog(
-        employee_id=employee.id,
-        action=action
-    )
-    db.add(attendance_log)
-    await db.flush()
-
-    payroll_session = None
-
-    if action == "OUT":
-        clock_in_result = await db.execute(
-            select(AttendanceLog)
-            .where(
-                AttendanceLog.employee_id == employee.id,
-                AttendanceLog.action == "IN",
-            )
-            .order_by(AttendanceLog.timestamp.desc())
-            .limit(1)
+    try:
+        attendance_log = AttendanceLog(
+            employee_id=employee.id,
+            action=action
         )
-        clock_in_log = clock_in_result.scalars().first()
+        db.add(attendance_log)
+        await db.flush()
 
-        if clock_in_log:
-            clock_in_time = clock_in_log.timestamp
-            clock_out_time = attendance_log.timestamp
+        payroll_session = None
 
-            # Fallback: if DB hasn't populated the timestamp yet, use now()
-            if clock_out_time is None:
-                from datetime import timezone
-                clock_out_time = datetime.now(tz=timezone.utc)
-
-            duration_seconds = (clock_out_time - clock_in_time).total_seconds()
-            total_hours = duration_seconds / 3600
-            hourly_rate = employee.hourly_rate or 0.0
-            total_pay = total_hours * hourly_rate
-            
-            payroll_session = PayrollSession(
-                employee_id=employee.id,
-                shift_date=clock_in_time.date(),
-                clock_in_time=clock_in_time,
-                clock_out_time=clock_out_time,
-                total_hours=round(total_hours, 4),
-                total_pay=round(total_pay, 2),
+        if action == "OUT":
+            clock_in_result = await db.execute(
+                select(AttendanceLog)
+                .where(
+                    AttendanceLog.employee_id == employee.id,
+                    AttendanceLog.action == "IN",
+                )
+                .order_by(AttendanceLog.timestamp.desc())
+                .limit(1)
             )
-            db.add(payroll_session)
+            clock_in_log = clock_in_result.scalars().first()
 
-    await db.commit()
+            if clock_in_log:
+                clock_in_time = clock_in_log.timestamp
+                clock_out_time = attendance_log.timestamp
+
+                # Fallback: if DB hasn't populated the timestamp yet, use now()
+                if clock_out_time is None:
+                    clock_out_time = datetime.now(tz=timezone.utc)
+
+                duration_seconds = (clock_out_time - clock_in_time).total_seconds()
+                total_hours = duration_seconds / 3600
+                hourly_rate = employee.hourly_rate or 0.0
+                total_pay = total_hours * hourly_rate
+                
+                payroll_session = PayrollSession(
+                    employee_id=employee.id,
+                    shift_date=clock_in_time.date(),
+                    clock_in_time=clock_in_time,
+                    clock_out_time=clock_out_time,
+                    total_hours=round(total_hours, 4),
+                    total_pay=round(total_pay, 2),
+                )
+                db.add(payroll_session)
+
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        return APIResponse(
+            success=False,
+            data=None,
+            message="Failed to verify employee, try again later"
+        )
 
     response_data = {
         "match": {
@@ -157,7 +181,7 @@ async def verify(
             "email": employee.email,
         },
         "similarity": float(similarity),
-        "verified": similarity > SIMILARITY_THRESHOLD,
+        "verified": similarity >= SIMILARITY_THRESHOLD,
         "action": action,
     }
     if payroll_session:
@@ -204,13 +228,21 @@ async def edit_employee(
             status_code=404
         )
 
-    update_data = employee.dict(exclude_unset=True)
+    try:
+        update_data = employee.model_dump(exclude_unset=True)
 
-    for field, value in update_data.items():
-        setattr(employee_record, field, value)
+        for field, value in update_data.items():
+            setattr(employee_record, field, value)
 
-    await db.commit()
-    await db.refresh(employee_record)
+        await db.commit()
+        await db.refresh(employee_record)
+    except SQLAlchemyError:
+        await db.rollback()
+        return create_response(
+            success=False,
+            message="Failed to update employee on our end, try again later",
+            status_code=500
+        )
 
     return APIResponse(
         success=True,
