@@ -46,6 +46,10 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 LOGIN_SECRET = os.getenv("LOGIN_SECRET")
 IS_PROD = os.getenv("IS_PROD") == "true"
 
+samesite = "none" if IS_PROD else "lax"
+secure = IS_PROD
+
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Helper functions
@@ -134,16 +138,16 @@ async def register(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -203,16 +207,16 @@ async def login(form_data: LoginData,
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -278,16 +282,16 @@ async def verify_2fa(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -320,8 +324,8 @@ async def refresh_token_endpoint(request: Request):
         key="access_token",
         value=new_access_token,
         httponly=True,
-        secure=IS_PROD,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
