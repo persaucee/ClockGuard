@@ -11,3 +11,6 @@ asyncpg
 pgvector>=0.2.0
 apscheduler
 pyotp
+pytest
+httpx
+pytest-asyncio

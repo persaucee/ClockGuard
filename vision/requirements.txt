@@ -4,3 +4,4 @@ numpy
 keras-facenet
 tensorflow
 requests
+scipy
