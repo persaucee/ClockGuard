@@ -44,6 +44,7 @@ router = APIRouter(prefix="/auth")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 LOGIN_SECRET = os.getenv("LOGIN_SECRET")
+IS_PROD = os.getenv("IS_PROD") == "true"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -129,12 +130,11 @@ async def register(
     ),
     message="User registered successfully"
 )
-    # TODO: set secure=true in production
     json_response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
+        secure=IS_PROD,
         samesite="strict",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -142,7 +142,7 @@ async def register(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
+        secure=IS_PROD,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -203,7 +203,7 @@ async def login(form_data: LoginData,
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False, #TODO: Set to true in production
+        secure=IS_PROD,
         samesite="strict",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -211,7 +211,7 @@ async def login(form_data: LoginData,
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # TODO: Set to true in production
+        secure=IS_PROD,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -278,7 +278,7 @@ async def verify_2fa(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
+        secure=IS_PROD,
         samesite="strict",
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
@@ -286,7 +286,7 @@ async def verify_2fa(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
+        secure=IS_PROD,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -320,7 +320,7 @@ async def refresh_token_endpoint(request: Request):
         key="access_token",
         value=new_access_token,
         httponly=True,
-        secure=False,  # TODO: True in production
+        secure=IS_PROD,
         samesite="strict",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
