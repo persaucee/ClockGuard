@@ -26,18 +26,28 @@ app = FastAPI(root_path="/api", lifespan=lifespan,
             openapi_url=None if IS_PROD else "/openapi.json",
 )
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if IS_PROD:
+    # Production
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],  # MUST be empty when using regex
+        allow_origin_regex=r"https://clockguard.*\.vercel\.app",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # Development (local)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.include_router(auth.router)
 app.include_router(employees.router)
