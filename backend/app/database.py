@@ -5,21 +5,16 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-DB_USERNAME = os.getenv("DB_USERNAME")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+DB_URL = os.getenv("DB_URL")
 
 
 
 # Async DB Setup (sets up connection pooling and async session management)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-ASYNC_DB_URL = f"postgresql+asyncpg://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 async_engine = create_async_engine(
-    ASYNC_DB_URL,
+    DB_URL,
     pool_size=8,
     max_overflow=5,
     pool_pre_ping=True,

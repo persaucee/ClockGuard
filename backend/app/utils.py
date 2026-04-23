@@ -55,7 +55,8 @@ def create_response(
     success: bool,
     data = None,
     message: Optional[str] = None,
-    status_code: int = 200
+    status_code: int = 200,
+    meta: Optional[dict] = None
 ) -> JSONResponse:
     from app.schemas import APIResponse
     
@@ -63,7 +64,8 @@ def create_response(
         success=success,
         data=data,
         message=message,
-        status_code=status_code
+        meta=meta,
+        status_code=status_code,
     )
     
     return JSONResponse(

@@ -14,6 +14,7 @@ class APIResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     message: Optional[str] = None
+    meta: Optional[dict] = None
     status_code: int = 200
 
 class RegisterData(BaseModel):
