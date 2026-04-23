@@ -14,3 +14,4 @@ pyotp
 pytest
 httpx
 pytest-asyncio
+gunicorn
