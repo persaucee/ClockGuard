@@ -7,6 +7,11 @@ on:
 
 env:
   DB_URL: sqlite+aiosqlite:///./test.db
+  LOGIN_SECRET: testsecret
+  CRON_INTERVAL_MINUTES: 60\
+  GMAIL_APP_EMAIL: testemail@example.com
+  GMAIL_APP_PASSWORD: testpassword
+  IS_PROD: false
 
 jobs:
   test:
