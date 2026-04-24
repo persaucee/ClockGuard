@@ -28,7 +28,7 @@ from app.security.two_factor import (
 
 from dependencies import get_current_user, get_db
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -329,14 +329,15 @@ async def refresh_token_endpoint(request: Request):
     return response
 
 @router.get("/me")
-async def read_users_me(current_user: dict = Depends(get_current_user)):
+async def read_users_me(current_user: Admin = Depends(get_current_user)):
     return create_response(
-        success=True, 
+        success=True,
         data=UserData(
-            username=current_user.username, 
-            first_name=current_user.first_name, 
-            last_name=current_user.last_name, 
-            organization_id=current_user.organization_id
+            username=current_user.username,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            organization_id=current_user.organization_id,
+            two_factor_enabled=current_user.two_factor_enabled
         ),
         message="User info retrieved"
     )

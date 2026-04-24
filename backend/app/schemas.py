@@ -44,6 +44,7 @@ class UserData(BaseModel):
     last_name: str
     company: Optional[str] = None
     organization_id: UUID
+    two_factor_enabled: bool = False
 
 #Employee Schemas
 

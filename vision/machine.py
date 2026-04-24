@@ -50,6 +50,42 @@ class PasswordDialog(ctk.CTkToplevel):
         
     def get_input(self):
         return self.password
+    
+class TwoFactorDialog(ctk.CTkToplevel):
+    def __init__(self, title="Two-Factor Authentication", text="Enter the 6-digit code from your authenticator app:"):
+        super().__init__()
+        self.title(title)
+        self.geometry("350x200")
+
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - (350 // 2)
+        y = (self.winfo_screenheight() // 2) - (200 // 2)
+        self.geometry(f"+{x}+{y}")
+
+        self.code = None
+
+        ctk.CTkLabel(self, text=text, font=ctk.CTkFont(size=16)).pack(pady=(30, 10))
+
+        self.entry = ctk.CTkEntry(self, width=250)
+        self.entry.pack(pady=10)
+        self.entry.focus()
+
+        self.bind("<Return>", lambda event: self.submit())
+
+        ctk.CTkButton(self, text="Verify", command=self.submit, width=250).pack(pady=15)
+
+        self.grab_set()
+        self.wait_window(self)
+
+    def submit(self):
+        self.code = self.entry.get().strip()
+        self.destroy()
+
+    def get_input(self):
+        return self.code
+    
+
+
 def load_ai():
     global embedder, face_net_dnn, liveness_net
     if embedder is None:
@@ -444,41 +480,94 @@ class KioskHubApp(ctk.CTk):
                       text_color="gray", hover_color="#333333", command=self.destroy).pack(pady=10)
 
     def attempt_login(self):
-        username = self.username_entry.get()
-        password = self.password_entry.get()
-        
+        username = self.username_entry.get().strip()
+        password = self.password_entry.get().strip()
+
         if not username or not password:
             messagebox.showwarning("Error", "Please fill in all fields.")
             return
 
         print(f"\n[API] Attempting login for '{username}'...")
 
-        # match schema plsplspplplsplsplspls
         payload = {
             "username": username,
             "password": password
         }
-        
+
         try:
-            # save cookie
             response = api_session.post(f"{BACKEND_URL}/auth/login", json=payload)
-            
+
             if response.status_code == 200:
-                print("[API] Login successful! Secure cookie saved to session.")
                 data = response.json()
+                response_data = data.get("data", {})
+
+                # 2FA required path
+                if response_data.get("two_factor_required"):
+                    temp_token = response_data.get("temp_token")
+
+                    if not temp_token:
+                        messagebox.showerror("Login Error", "2FA required, but no temporary token was returned.")
+                        return
+
+                    dialog = TwoFactorDialog()
+                    code = dialog.get_input()
+
+                    if not code:
+                        messagebox.showwarning("2FA Required", "Authentication code is required to continue.")
+                        return
+
+                    verify_payload = {
+                        "temp_token": temp_token,
+                        "code": code
+                    }
+
+                    verify_response = api_session.post(f"{BACKEND_URL}/auth/verify-2fa", json=verify_payload)
+
+                    if verify_response.status_code == 200:
+                        verify_data = verify_response.json()
+                        verify_response_data = verify_data.get("data", {})
+
+                        self.current_admin = username
+                        self.org_id = verify_response_data.get("organization_id")
+
+                        print("[API] 2FA verification successful! Secure cookie saved to session.")
+                        self.build_hub_screen()
+                        return
+
+                    elif verify_response.status_code == 401:
+                        messagebox.showerror("2FA Failed", "Invalid authentication code.")
+                        return
+
+                    else:
+                        messagebox.showerror(
+                            "2FA Error",
+                            f"Server returned {verify_response.status_code}: {verify_response.text}"
+                        )
+                        return
+
+                # Normal login path
                 self.current_admin = username
-                self.org_id = data.get("organization_id")
-                self.build_hub_screen() 
-                
+                self.org_id = response_data.get("organization_id")
+
+                print("[API] Login successful! Secure cookie saved to session.")
+                self.build_hub_screen()
+
             elif response.status_code == 401:
-                #401
                 messagebox.showerror("Login Failed", "Incorrect username or password")
-                
+
             else:
                 messagebox.showerror("Error", f"Server returned {response.status_code}: {response.text}")
-                
+
         except requests.exceptions.ConnectionError:
             messagebox.showerror("Connection Error", "Could not connect to the backend. Is FastAPI running on port 8000?")
+
+
+    def logout(self):
+        api_session.cookies.clear()
+        self.current_admin = None
+        self.org_id = None
+        self.build_login_screen()
+
 
     def build_hub_screen(self):
         if self.current_frame: self.current_frame.destroy()
@@ -497,7 +586,7 @@ class KioskHubApp(ctk.CTk):
                       
         # logout and not exit app
         ctk.CTkButton(self.current_frame, text="Logout", fg_color="transparent", 
-                      text_color="gray", command=self.build_login_screen).pack(pady=20)
+                      text_color="gray", command=self.logout).pack(pady=20)
 
     def open_registration(self):
         #name (need to change into first and last name)
