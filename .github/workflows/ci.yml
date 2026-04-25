@@ -3,7 +3,8 @@ name: Pytest CI
 on:
   pull_request:
     branches:
-      - prod-test
+      - dev
+      - main
 
 env:
   DB_URL: sqlite+aiosqlite:///./test.db
