@@ -88,7 +88,7 @@ def check_liveness(frame, x,y,w,h):
     conf = softmax_scores[label_index]
 
    #if label index is one then its a real face
-    is_live = (label_index == 1) and (conf > 0.60)
+    is_live = (label_index == 1) and (conf > 0.40)
     
     return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
@@ -230,7 +230,14 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                         cv2.waitKey(10) # force the screen to update
 
                         # evaluate vector
-                        face_crop = roi_frame[y:y+h, x:x+w]
+                        start_y, end_y = max(0, y), min(ROI_H, y + h)
+                        start_x, end_x = max(0, x), min(ROI_W, x + w)
+
+                        face_crop = roi_frame[start_y:end_y, start_x:end_x]
+
+                        if face_crop.size == 0:
+                            continue
+
                         face_160x160 = cv2.resize(face_crop, (160, 160))
                         face_rgb = cv2.cvtColor(face_160x160, cv2.COLOR_BGR2RGB)
                         samples = np.expand_dims(face_rgb, axis=0)
@@ -248,17 +255,21 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
                             if response.status_code == 200:
                                 data = response.json()
-                                print(f"\n[DEBUG JSON] RAW BACKEND DATA: {data}\n") # <--- ADD THIS LINE
-                                employee = data.get("match", {}).get("name", "Unknown")
-                                similarity = data.get("similarity", 0.0)
+                                print(f"\n[DEBUG JSON] RAW BACKEND DATA: {data}\n")
+                                ind = data.get("data", {})
+
+                                employee = ind.get("match", {}).get("name", "Unknown")
+                                similarity = ind.get("similarity", 0.0)
+                                action = ind.get("action", "IN") 
+                                greeting = "WELCOME" if action == "IN" else "GOODBYE"
                                 # 200 green screen
                                 overlay = frame.copy()
                                 cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), (0, 255, 0), -1)
                                 cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame) # 30% transparent green tint
-                                
-                                cv2.putText(frame, f"WELCOME, {employee.upper()}!", (x_start - 30, y_start + ROI_H // 2), 
+                                cv2.putText(frame, f"{greeting}, {employee.upper()}!", (x_start - 30, y_start - 50), 
                                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 3)
-                                print(f"[API] Match found: {employee}, similarity: {similarity:.2f}")
+                                        
+                                print(f"[API] Match found: {employee}, Action: {action}")
 
                             elif response.status_code == 404:
                                 # 404 red screen
@@ -301,7 +312,15 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
                                 cv2.waitKey(2000)
                                 continue
                             
-                            face_crop = roi_frame[y:y+h, x:x+w].copy()
+                            # rechange because there was negative values that causes crashing
+                            start_y, end_y = max(0, y), min(ROI_H, y + h)
+                            start_x, end_x = max(0, x), min(ROI_W, x + w)
+
+                            face_crop = roi_frame[start_y:end_y, start_x:end_x].copy()
+
+                            # Safety check: if the crop is somehow still empty, skip this frame instead of crashing
+                            if face_crop.size == 0:
+                                continue
                             #white flash thing mimimm
                             cv2.rectangle(frame, (x_start, y_start), (x_start+ROI_W, y_start+ROI_H), (255, 255, 255), -1)
                             #cropping
