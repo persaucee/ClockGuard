@@ -45,7 +45,7 @@ function EmployeesPage() {
         
         for (const employee of employees) {
           try {
-            const sessions = await api.payroll.getEmployeeSessions(employee.id);
+            const sessions = await api.payroll.getAllEmployeeSessions(employee.id);
             const uncalculated = sessions.filter(session => !session.processed);
             
             uncalculated.forEach(session => {
@@ -176,7 +176,7 @@ function EmployeesPage() {
       const allSessions = [];
       for (const employee of employees) {
         try {
-          const sessions = await api.payroll.getEmployeeSessions(employee.id);
+          const sessions = await api.payroll.getAllEmployeeSessions(employee.id);
           const uncalculated = sessions.filter(session => !session.processed);
           uncalculated.forEach(session => {
             allSessions.push({
@@ -210,7 +210,9 @@ function EmployeesPage() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
-    const date = new Date(dateStr);
+    // Split manually to avoid UTC→local timezone shift that `new Date('YYYY-MM-DD')` causes.
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

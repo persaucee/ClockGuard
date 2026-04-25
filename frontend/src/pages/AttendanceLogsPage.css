@@ -1,174 +1,377 @@
+/* ── Page shell ── */
 .attendance-logs-page {
   min-height: 100vh;
   background-color: var(--color-background);
 }
 
-.loading-message {
-  color: var(--color-text-secondary);
-  font-size: 1.125rem;
-  text-align: center;
-  padding: var(--spacing-xl);
+/* ── Page header ── */
+.logs-page-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
 }
 
-.error-message {
-  color: #dc3545;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  padding: var(--spacing-md);
-  border-radius: var(--radius-sm);
+.logs-page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.logs-page-count {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+}
+
+/* ── State boxes (loading / error / empty) ── */
+.logs-state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xxl) var(--spacing-xl);
+  color: var(--color-text-secondary);
   font-size: 1rem;
+}
+
+.logs-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.logs-empty-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.logs-error-box {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: 0.9375rem;
   margin-top: var(--spacing-md);
 }
 
-.empty-message {
-  color: var(--color-text-secondary);
+.logs-error-icon {
   font-size: 1.125rem;
-  text-align: center;
-  padding: var(--spacing-xl);
+  flex-shrink: 0;
 }
 
-.attendance-table-container {
-  width: 100%;
-  margin-top: var(--spacing-lg);
-  overflow-x: auto;
+/* ── Card list ── */
+.employee-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
-.attendance-table {
-  width: 100%;
-  border-collapse: collapse;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-md);
+/* ── Employee card ── */
+.employee-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
-.attendance-table thead {
-  background-color: var(--color-primary);
-  color: white;
+.employee-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
 }
 
-.attendance-table th {
-  padding: 0.875rem 1rem;
+.employee-card--open {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Card header (the clickable row) ── */
+.employee-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: none;
+  border: none;
+  cursor: pointer;
   text-align: left;
-  font-weight: 600;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-.attendance-table th:nth-child(1) {
-  width: 30%;
-}
-
-.attendance-table th:nth-child(2) {
-  width: 25%;
-}
-
-.attendance-table th:nth-child(3) {
-  width: 45%;
-}
-
-.attendance-table tbody tr {
-  border-bottom: 1px solid var(--color-border);
   transition: background-color var(--transition-fast);
 }
 
-.attendance-table tbody tr:last-child {
-  border-bottom: none;
-}
-
-.attendance-table tbody tr:hover {
+.employee-card__header:hover {
   background-color: var(--color-background-alt);
 }
 
-.attendance-table td {
-  padding: 0.875rem 1rem;
-  color: var(--color-text);
-  font-size: 0.9375rem;
+.employee-card--open .employee-card__header {
+  background-color: var(--color-background-alt);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.timestamp-cell {
-  font-family: 'Courier New', monospace;
-  font-weight: 500;
-  font-size: 0.875rem;
+/* ── No-logs card variant ── */
+.employee-card--no-logs {
+  opacity: 0.7;
+}
+
+.employee-card--no-logs .employee-card__header {
+  cursor: default;
+}
+
+.employee-card--no-logs:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-border);
+}
+
+.employee-card__no-logs-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+/* ── Avatar circle ── */
+.employee-avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+}
+
+.employee-avatar.avatar--out {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+}
+
+.employee-avatar.avatar--none {
+  background: linear-gradient(135deg, #94a3b8 0%, #cbd5e1 100%);
+}
+
+/* ── Name + meta ── */
+.employee-card__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.employee-card__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.employee-card__meta {
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
 
-.action-badge {
+/* ── Right section (badge + time + count + chevron) ── */
+.employee-card__right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.employee-card__time {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.employee-card__log-count {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  background-color: var(--color-background-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.2rem 0.625rem;
+  white-space: nowrap;
+}
+
+.employee-card__chevron {
+  font-size: 1.375rem;
+  color: var(--color-text-light);
+  line-height: 1;
   display: inline-block;
-  padding: 0.375rem 0.75rem;
+  transition: transform 0.2s ease;
+  transform: rotate(0deg);
+  user-select: none;
+}
+
+.employee-card__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* ── Action badges ── */
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
   border-radius: var(--radius-sm);
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.04em;
 }
 
+.action-badge--sm {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.75rem;
+}
+
+.action-in,
 .action-clock-in {
-  background-color: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+  background-color: #dcfce7;
+  color: #166534;
 }
 
+.action-out,
 .action-clock-out {
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+  background-color: #f1f5f9;
+  color: #475569;
 }
 
 .action-break-start {
-  background-color: #fff3cd;
-  color: #856404;
-  border: 1px solid #ffeeba;
+  background-color: #fef9c3;
+  color: #854d0e;
 }
 
 .action-break-end {
-  background-color: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+  background-color: #e0f2fe;
+  color: #075985;
 }
 
-@media (max-width: 768px) {
-  .attendance-table th,
-  .attendance-table td {
-    padding: 0.75rem 0.75rem;
-    font-size: 0.875rem;
-  }
-
-  .attendance-table th {
-    font-size: 0.8125rem;
-  }
-
-  .timestamp-cell {
-    font-size: 0.8125rem;
-  }
-
-  .action-badge {
-    font-size: 0.75rem;
-    padding: 0.3rem 0.6rem;
-  }
+/* ── Expanded timeline ── */
+.employee-timeline {
+  padding: var(--spacing-md) var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + 44px + var(--spacing-md));
 }
 
-@media (max-width: 480px) {
-  .attendance-table-container {
-    margin-top: var(--spacing-md);
+.timeline-track {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+/* Rail holds the dot and the connecting line */
+.timeline-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 16px;
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+  background-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 127, 128, 0.15);
+}
+
+.timeline-dot--out,
+.timeline-dot--clock-out {
+  background-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+.timeline-dot--break-start,
+.timeline-dot--break-end {
+  background-color: var(--color-warning);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+.timeline-line {
+  width: 2px;
+  flex: 1;
+  min-height: 20px;
+  background-color: var(--color-border);
+  margin: 3px 0;
+}
+
+/* Timeline content row */
+.timeline-body {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 2px 0 18px;
+  flex-wrap: wrap;
+}
+
+.timeline-date {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.timeline-time {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .employee-card__header {
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
   }
 
-  .attendance-table th,
-  .attendance-table td {
-    padding: 0.625rem 0.5rem;
+  .employee-card__right {
+    gap: var(--spacing-sm);
+  }
+
+  .employee-card__log-count {
+    display: none;
+  }
+
+  .employee-card__time {
     font-size: 0.8125rem;
   }
 
-  .attendance-table th {
-    font-size: 0.75rem;
+  .employee-timeline {
+    padding: var(--spacing-md);
+    padding-left: var(--spacing-lg);
   }
 
-  .timestamp-cell {
-    font-size: 0.75rem;
-  }
-
-  .action-badge {
-    font-size: 0.6875rem;
-    padding: 0.25rem 0.5rem;
+  .logs-page-title {
+    font-size: 1.375rem;
   }
 }
