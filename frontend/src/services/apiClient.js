@@ -182,8 +182,43 @@ export const api = {
   },
   
   attendance: {
+    getStatus: async () => {
+      const url = `${API_BASE_URL}/attendance/status`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { ...defaultHeaders },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch attendance status' }));
+        throw new Error(errorData.message || 'Failed to fetch attendance status');
+      }
+
+      return await response.json();
+    },
+
+    getRecentLogs: async (pageSize = 50) => {
+      const url = `${API_BASE_URL}/attendance/clock-logs?page_size=${pageSize}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { ...defaultHeaders },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Failed to fetch recent logs' }));
+        throw new Error(errorData.message || 'Failed to fetch recent logs');
+      }
+
+      const result = await response.json();
+      return Array.isArray(result) ? result : (result.data || []);
+    },
+
     getLogs: async () => {
-      const url = `${API_BASE_URL}/attendance/logs`;
+      const url = `${API_BASE_URL}/attendance/clock-logs`;
       
       const config = {
         method: 'GET',
@@ -201,6 +236,43 @@ export const api = {
       }
       
       return await response.json();
+    },
+
+    getAllLogs: async () => {
+      const PAGE_SIZE = 100;
+      const allLogs = [];
+      let page = 1;
+
+      while (true) {
+        const url = `${API_BASE_URL}/attendance/clock-logs?page=${page}&limit=${PAGE_SIZE}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { ...defaultHeaders },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Failed to fetch attendance logs' }));
+          throw new Error(errorData.message || 'Failed to fetch attendance logs');
+        }
+
+        const result = await response.json();
+        const pageData = Array.isArray(result) ? result : (result.data || []);
+
+        allLogs.push(...pageData);
+
+        // Stop when we have fetched everything.
+        // Prefer explicit total/count fields; fall back to a short page heuristic.
+        const total = result.total ?? result.count ?? null;
+        if (total !== null ? allLogs.length >= total : pageData.length < PAGE_SIZE) {
+          break;
+        }
+
+        page++;
+      }
+
+      return allLogs;
     },
   },
   
@@ -284,6 +356,41 @@ export const api = {
       
       const result = await response.json();
       return result.data || [];
+    },
+
+    getAllEmployeeSessions: async (employeeId) => {
+      const PAGE_SIZE = 100;
+      const allSessions = [];
+      let page = 1;
+
+      while (true) {
+        const url = `${API_BASE_URL}/payroll/${employeeId}?page=${page}&limit=${PAGE_SIZE}`;
+
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { ...defaultHeaders },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Failed to fetch payroll sessions' }));
+          throw new Error(errorData.message || 'Failed to fetch payroll sessions');
+        }
+
+        const result = await response.json();
+        const pageData = Array.isArray(result) ? result : (result.data || []);
+
+        allSessions.push(...pageData);
+
+        const total = result.total ?? result.count ?? null;
+        if (total !== null ? allSessions.length >= total : pageData.length < PAGE_SIZE) {
+          break;
+        }
+
+        page++;
+      }
+
+      return allSessions;
     },
     updateSession: async (sessionId, data) => {
       const url = `${API_BASE_URL}/payroll/${sessionId}`;

@@ -1,68 +1,146 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './AttendanceLogsPage.css';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { api } from '../services/apiClient';
 
+function getInitials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function AttendanceLogsPage() {
   const [logs, setLogs] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [expandedEmployees, setExpandedEmployees] = useState(new Set());
 
   useEffect(() => {
-    const fetchAttendanceLogs = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        const response = await api.attendance.getLogs();
-        const sessions = response.data || [];
+        const [allLogs, allEmployees] = await Promise.all([
+          api.attendance.getAllLogs(),
+          api.employees.getAll(),
+        ]);
 
-        const logEntries = [];
-        sessions.forEach(session => {
-          if (session.clock_in_time) {
-            logEntries.push({
-              id: `${session.id}-in`,
-              employee_name: session.employee_name,
-              action: 'IN',
-              timestamp: session.clock_in_time
-            });
-          }
-          if (session.clock_out_time) {
-            logEntries.push({
-              id: `${session.id}-out`,
-              employee_name: session.employee_name,
-              action: 'OUT',
-              timestamp: session.clock_out_time
-            });
-          }
-        });
-
-        logEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        setLogs(logEntries);
+        allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setLogs(allLogs);
+        setEmployees(allEmployees);
       } catch (err) {
-        setError(err.message || 'Failed to load attendance logs');
-        console.error('Error fetching attendance logs:', err);
+        setError(err.message || 'Failed to load data');
+        console.error('Error fetching attendance data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAttendanceLogs();
+    fetchData();
   }, []);
 
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+  // Build a unified list: every employee appears once.
+  // Employees with logs → sorted by most recent activity.
+  // Employees with no logs → sorted alphabetically, appended at the bottom.
+  const groupedEmployees = useMemo(() => {
+    const normName = (s) => (s || '').trim().toLowerCase();
+
+    // Primary index: keyed by employee_id when present, otherwise by normalized name.
+    // Secondary index: keyed by normalized name for cross-referencing with /employees/.
+    const groups = {};
+    const groupsByName = {}; // normalized-name → group
+
+    logs.forEach((log) => {
+      const key = log.employee_id || normName(log.employee_name);
+      if (!groups[key]) {
+        const g = {
+          key,
+          employeeId: log.employee_id || null,
+          name: log.employee_name || '',
+          logs: [],
+        };
+        groups[key] = g;
+        // Register in the name index so employee seeding can find this group.
+        const nk = normName(log.employee_name);
+        if (nk && !groupsByName[nk]) groupsByName[nk] = g;
+      }
+      groups[key].logs.push(log);
+    });
+
+    // Sort each group's logs newest-first and compute derived fields.
+    Object.values(groups).forEach((g) => {
+      g.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      g.latestLog = g.logs[0];
+      g.count = g.logs.length;
+    });
+
+    // Seed with every known employee so no-log employees still appear.
+    // Match an existing group by employee_id first, then by normalized name.
+    // Only create a new zero-count entry if neither lookup finds a match.
+    employees.forEach((emp) => {
+      const empId = emp.employee_id || emp.id || null;
+      const empName = emp.name || emp.employee_name || '';
+      const nk = normName(empName);
+
+      const existing = (empId && groups[empId]) || groupsByName[nk];
+
+      if (existing) {
+        // Upgrade the matched group with the canonical employee record data.
+        if (!existing.employeeId && empId) existing.employeeId = empId;
+        if (empName && normName(existing.name) !== nk) existing.name = empName;
+      } else {
+        // Genuinely no logs for this employee.
+        const key = empId || nk || empName;
+        groups[key] = {
+          key,
+          employeeId: empId,
+          name: empName || 'Unknown',
+          logs: [],
+          latestLog: null,
+          count: 0,
+        };
+      }
+    });
+
+    const withLogs = Object.values(groups)
+      .filter((g) => g.count > 0)
+      .sort((a, b) => new Date(b.latestLog.timestamp) - new Date(a.latestLog.timestamp));
+
+    const withoutLogs = Object.values(groups)
+      .filter((g) => g.count === 0)
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    return [...withLogs, ...withoutLogs];
+  }, [logs, employees]);
+
+  const toggleEmployee = (key) => {
+    setExpandedEmployees((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
     });
   };
+
+  const formatDate = (timestamp) =>
+    new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  const formatTime = (timestamp) =>
+    new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  const formatHeaderDate = (timestamp) =>
+    new Date(timestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
 
   return (
     <div className="attendance-logs-page">
@@ -71,40 +149,125 @@ function AttendanceLogsPage() {
         <Sidebar />
         <main className="page-content">
           <div className="content-container">
-            <h1>Attendance Logs</h1>
-            
-            {loading && <p className="loading-message">Loading attendance logs...</p>}
-            
-            {error && <p className="error-message">Error: {error}</p>}
-            
-            {!loading && !error && logs.length === 0 && (
-              <p className="empty-message">No attendance logs found.</p>
+            <div className="logs-page-header">
+              <h1 className="logs-page-title">Attendance Logs</h1>
+              {!loading && !error && (
+                <span className="logs-page-count">{groupedEmployees.length} employees</span>
+              )}
+            </div>
+
+            {loading && (
+              <div className="logs-state-box">
+                <div className="logs-spinner" />
+                <p>Loading attendance logs…</p>
+              </div>
             )}
-            
-            {!loading && !error && logs.length > 0 && (
-              <div className="attendance-table-container">
-                <table className="attendance-table">
-                  <thead>
-                    <tr>
-                      <th>Employee Name</th>
-                      <th>Action</th>
-                      <th>Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map((log) => (
-                      <tr key={log.id || `${log.employee_id}-${log.timestamp}`}>
-                        <td>{log.employee_name}</td>
-                        <td>
-                          <span className={`action-badge action-${log.action.toLowerCase()}`}>
-                            {log.action}
+
+            {error && (
+              <div className="logs-error-box">
+                <span className="logs-error-icon">⚠</span>
+                <p>{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && groupedEmployees.length === 0 && (
+              <div className="logs-state-box">
+                <p className="logs-empty-text">No employees or attendance logs found.</p>
+              </div>
+            )}
+
+            {!loading && !error && groupedEmployees.length > 0 && (
+              <div className="employee-card-list">
+                {groupedEmployees.map((employee) => {
+                  const isExpanded = expandedEmployees.has(employee.key);
+                  const initials = getInitials(employee.name);
+                  const hasLogs = employee.count > 0;
+                  const actionKey = hasLogs
+                    ? employee.latestLog.action.toLowerCase()
+                    : 'none';
+
+                  return (
+                    <div
+                      key={employee.key}
+                      className={`employee-card${isExpanded ? ' employee-card--open' : ''}${!hasLogs ? ' employee-card--no-logs' : ''}`}
+                    >
+                      <button
+                        className="employee-card__header"
+                        onClick={() => hasLogs && toggleEmployee(employee.key)}
+                        aria-expanded={isExpanded}
+                        disabled={!hasLogs}
+                      >
+                        <div className={`employee-avatar avatar--${actionKey}`}>
+                          {initials}
+                        </div>
+
+                        <div className="employee-card__info">
+                          <span className="employee-card__name">{employee.name}</span>
+                          <span className="employee-card__meta">
+                            {hasLogs
+                              ? `Last activity · ${formatHeaderDate(employee.latestLog.timestamp)}`
+                              : 'No activity recorded'}
                           </span>
-                        </td>
-                        <td className="timestamp-cell">{formatTimestamp(log.timestamp)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+
+                        <div className="employee-card__right">
+                          {hasLogs ? (
+                            <>
+                              <span className={`action-badge action-${actionKey}`}>
+                                {employee.latestLog.action}
+                              </span>
+                              <span className="employee-card__time">
+                                {formatTime(employee.latestLog.timestamp)}
+                              </span>
+                              <span className="employee-card__log-count">
+                                {employee.count} {employee.count === 1 ? 'log' : 'logs'}
+                              </span>
+                              <span
+                                className={`employee-card__chevron${isExpanded ? ' employee-card__chevron--open' : ''}`}
+                              >
+                                ›
+                              </span>
+                            </>
+                          ) : (
+                            <span className="employee-card__no-logs-label">No logs</span>
+                          )}
+                        </div>
+                      </button>
+
+                      {isExpanded && hasLogs && (
+                        <div className="employee-timeline">
+                          <div className="timeline-track">
+                            {employee.logs.map((log, index) => {
+                              const logAction = log.action.toLowerCase();
+                              return (
+                                <div
+                                  key={log.id || `${log.employee_id}-${log.timestamp}-${index}`}
+                                  className="timeline-item"
+                                >
+                                  <div className="timeline-rail">
+                                    <div className={`timeline-dot timeline-dot--${logAction}`} />
+                                    {index < employee.logs.length - 1 && (
+                                      <div className="timeline-line" />
+                                    )}
+                                  </div>
+                                  <div className="timeline-body">
+                                    <span
+                                      className={`action-badge action-badge--sm action-${logAction}`}
+                                    >
+                                      {log.action}
+                                    </span>
+                                    <span className="timeline-date">{formatDate(log.timestamp)}</span>
+                                    <span className="timeline-time">{formatTime(log.timestamp)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
