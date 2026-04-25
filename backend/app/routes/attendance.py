@@ -1,4 +1,5 @@
 import uuid
+import math
 from typing import List
 
 from datetime import date, datetime, timezone, timedelta, time
@@ -26,121 +27,198 @@ router = APIRouter(prefix="/attendance")
 async def get_attendance_records(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = (
+
+    filters = [Employee.organization_id == current_user.organization_id]
+    if start_date:
+        filters.append(PayrollSession.shift_date >= start_date)
+    if end_date:
+        filters.append(PayrollSession.shift_date <= end_date)
+
+    base_q = (
         select(PayrollSession)
         .join(PayrollSession.employee)
         .options(joinedload(PayrollSession.employee))
-        .where(Employee.organization_id == current_user.organization_id)
+        .where(*filters)
+        .order_by(PayrollSession.shift_date.desc())
     )
 
-    if start_date:
-        query = query.where(PayrollSession.shift_date >= start_date)
-    if end_date:
-        query = query.where(PayrollSession.shift_date <= end_date)
+    count_q = (
+        select(func.count())
+        .select_from(PayrollSession)
+        .join(PayrollSession.employee)
+        .where(*filters)
+    )
 
-    query = query.order_by(PayrollSession.shift_date.desc())
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
 
-    result = await db.execute(query)
+    offset = (page - 1) * page_size
+    paged_q = base_q.limit(page_size).offset(offset)
+
+    result = await db.execute(paged_q)
     records = result.scalars().unique().all()
 
     data = [PayrollSessionResponse.model_validate(r) for r in records]
 
-    return create_response(success=True, data=data, message="Attendance records retrieved successfully")
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
+
+    return create_response(success=True, data=data, message="Attendance records retrieved successfully", meta=meta)
 
 @router.get("/logs/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_attendance_records(
     employee_id: uuid.UUID,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = (
+
+    filters = [
+        Employee.organization_id == current_user.organization_id,
+        PayrollSession.employee_id == employee_id,
+    ]
+    if start_date:
+        filters.append(PayrollSession.shift_date >= start_date)
+    if end_date:
+        filters.append(PayrollSession.shift_date <= end_date)
+
+    base_q = (
         select(PayrollSession)
         .join(PayrollSession.employee)
         .options(joinedload(PayrollSession.employee))
-        .where(
-            Employee.organization_id == current_user.organization_id,
-            PayrollSession.employee_id == employee_id,
-        )
+        .where(*filters)
+        .order_by(PayrollSession.shift_date.desc())
     )
 
-    if start_date:
-        query = query.where(PayrollSession.shift_date >= start_date)
-    if end_date:
-        query = query.where(PayrollSession.shift_date <= end_date)
+    count_q = (
+        select(func.count())
+        .select_from(PayrollSession)
+        .join(PayrollSession.employee)
+        .where(*filters)
+    )
 
-    query = query.order_by(PayrollSession.shift_date.desc())
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
 
-    result = await db.execute(query)
+    offset = (page - 1) * page_size
+    paged_q = base_q.limit(page_size).offset(offset)
+
+    result = await db.execute(paged_q)
     records = result.scalars().unique().all()
 
     data = [PayrollSessionResponse.model_validate(r) for r in records]
 
-    return create_response(success=True, data=data, message="Attendance records retrieved successfully")
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
+
+    return create_response(success=True, data=data, message="Attendance records retrieved successfully", meta=meta)
 
 @router.get("/clock-logs", response_model=APIResponse[List[AttendanceRecordResponse]])
-async def get_attendance_logs(
+async def get_all_attendance_logs(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = (
+
+    filters = [Employee.organization_id == current_user.organization_id]
+    if start_date:
+        filters.append(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
+    if end_date:
+        filters.append(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+
+    base_q = (
         select(AttendanceLog)
         .join(AttendanceLog.employee)
         .options(joinedload(AttendanceLog.employee))
-        .where(Employee.organization_id == current_user.organization_id)
+        .where(*filters)
+        .order_by(AttendanceLog.timestamp.desc())
     )
 
-    if start_date:
-        query = query.where(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
-    if end_date:
-        query = query.where(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+    count_q = (
+        select(func.count())
+        .select_from(AttendanceLog)
+        .join(AttendanceLog.employee)
+        .where(*filters)
+    )
 
-    query = query.order_by(AttendanceLog.timestamp.desc())
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
 
-    result = await db.execute(query)
+    offset = (page - 1) * page_size
+    paged_q = base_q.limit(page_size).offset(offset)
+
+    result = await db.execute(paged_q)
     logs = result.scalars().unique().all()
 
     data = [AttendanceRecordResponse.model_validate(log) for log in logs]
 
-    return create_response(success=True, data=data, message="Attendance logs retrieved successfully")
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
+
+    return create_response(success=True, data=data, message="Attendance logs retrieved successfully", meta=meta)
 
 @router.get("/clock-logs/{employee_id}", response_model=APIResponse[List[AttendanceRecordResponse]])
 async def get_attendance_logs(
     employee_id: uuid.UUID,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    query = (
+
+    filters = [
+        Employee.organization_id == current_user.organization_id,
+        AttendanceLog.employee_id == employee_id,
+    ]
+
+    if start_date:
+        filters.append(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
+    if end_date:
+        filters.append(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+
+    base_q = (
         select(AttendanceLog)
         .join(AttendanceLog.employee)
         .options(joinedload(AttendanceLog.employee))
-        .where(
-            Employee.organization_id == current_user.organization_id,
-            AttendanceLog.employee_id == employee_id
-            )
+        .where(*filters)
+        .order_by(AttendanceLog.timestamp.desc())
     )
 
-    if start_date:
-        query = query.where(AttendanceLog.timestamp >= datetime.combine(start_date, time.min))
-    if end_date:
-        query = query.where(AttendanceLog.timestamp <= datetime.combine(end_date, time.max))
+    count_q = (
+        select(func.count())
+        .select_from(AttendanceLog)
+        .join(AttendanceLog.employee)
+        .where(*filters)
+    )
 
-    query = query.order_by(AttendanceLog.timestamp.desc())
+    total_res = await db.execute(count_q)
+    total_items = int(total_res.scalar() or 0)
+    total_pages = math.ceil(total_items / page_size) if page_size else 0
 
-    result = await db.execute(query)
+    offset = (page - 1) * page_size
+    paged_q = base_q.limit(page_size).offset(offset)
+
+    result = await db.execute(paged_q)
     logs = result.scalars().unique().all()
 
     data = [AttendanceRecordResponse.model_validate(log) for log in logs]
 
-    return create_response(success=True, data=data, message="Attendance logs retrieved successfully")
+    meta = {"page": page, "page_size": page_size, "total_items": total_items, "total_pages": total_pages}
+
+    return create_response(success=True, data=data, message="Attendance logs retrieved successfully", meta=meta)
 
 @router.get("/status", response_model=APIResponse[ClockStatusData])
 async def get_attendance_status(

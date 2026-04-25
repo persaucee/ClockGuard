@@ -44,6 +44,11 @@ router = APIRouter(prefix="/auth")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", 7))
 LOGIN_SECRET = os.getenv("LOGIN_SECRET")
+IS_PROD = os.getenv("IS_PROD") == "true"
+
+samesite = "none" if IS_PROD else "lax"
+secure = IS_PROD
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -116,35 +121,33 @@ async def register(
         data={"sub": new_admin.username}
     )
 
-    response_body = create_response(
-        success=True,
-        data=RegisterDataResponse(
-            username=new_admin.username,
-            first_name=new_admin.first_name,
-            last_name=new_admin.last_name,
-            organization_id=new_org.id,
-            organization_name=new_org.name,
-            open_time=new_org.default_open_time,
-            close_time=new_org.default_close_time
-        ),
-        message="User registered successfully"
-    )
-    # TODO: set secure=true in production
-    json_response = JSONResponse(content=jsonable_encoder(response_body))
+    json_response = create_response(
+    success=True,
+    data=RegisterDataResponse(
+        username=new_admin.username,
+        first_name=new_admin.first_name,
+        last_name=new_admin.last_name,
+        organization_id=new_org.id,
+        organization_name=new_org.name,
+        open_time=new_org.default_open_time,
+        close_time=new_org.default_close_time
+    ),
+    message="User registered successfully"
+)
     json_response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -204,16 +207,16 @@ async def login(form_data: LoginData,
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False, #TODO: Set to true in production
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,  # TODO: Set to true in production
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -279,16 +282,16 @@ async def verify_2fa(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     json_response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     return json_response
@@ -321,8 +324,8 @@ async def refresh_token_endpoint(request: Request):
         key="access_token",
         value=new_access_token,
         httponly=True,
-        secure=False,  # TODO: True in production
-        samesite="strict",
+        secure=secure,
+        samesite=samesite,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
