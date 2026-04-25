@@ -20,13 +20,12 @@ async def get_admin_from_token(
 ) -> Admin | None:
     """
     Mirrors get_current_user but reads from the session cookie
-    instead of an Authorization header, since WS clients share
-    the same cookie jar as your HTTP client.
+    instead of an Authorization header
     """
     try:
-        token = get_token_from_cookie(websocket)  # Request and WebSocket both
-    except Exception:                             # implement the MutableHeaders
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)  # interface, so this just works
+        token = get_token_from_cookie(websocket)
+    except Exception:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return None
 
     try:

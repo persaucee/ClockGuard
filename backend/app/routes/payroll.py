@@ -9,6 +9,7 @@ from app.utils import send_payroll_email, create_response
 from dependencies import get_current_user, get_db
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import BackgroundTasks
 
@@ -156,30 +157,6 @@ async def process_payroll(
         message=f"Payroll processing initiated for {tasks_queued} employee(s)."
     )
 
-#TODO: debug endpoint, will remove in prod
-@router.post("/email/{employee_id}", response_model=APIResponse)
-async def send_email(
-    employee_id: uuid.UUID,
-    total_pay: float,
-    total_hours: float,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user)
-) -> JSONResponse:
-    employee = await db.execute(select(Employee).where(Employee.id == employee_id, Employee.organization_id == current_user.organization_id))
-    employee = employee.scalar_one_or_none()
-    if not employee:
-        return create_response(
-            success=False,
-            message="Employee not found",
-            status_code=404
-        )
-    background_tasks.add_task(send_payroll_email, employee.email, total_pay, total_hours)
-    return create_response(
-        success=True,
-        message="Payroll email sent successfully"
-    )
-
 @router.get("/{employee_id}", response_model=APIResponse[List[PayrollSessionResponse]])
 async def get_employee_payroll_sessions(
     employee_id: uuid.UUID,
@@ -189,6 +166,7 @@ async def get_employee_payroll_sessions(
     result = await db.execute(
         select(PayrollSession)
         .join(PayrollSession.employee)
+        .options(joinedload(PayrollSession.employee))
         .where(
             PayrollSession.employee_id == employee_id,
             Employee.organization_id == current_user.organization_id
@@ -212,25 +190,31 @@ async def edit_payroll_session(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user)
 ) -> JSONResponse:
-    payroll_session = await db.execute(
+    result = await db.execute(
         select(PayrollSession)
         .join(PayrollSession.employee)
+        .options(joinedload(PayrollSession.employee))
         .where(
             PayrollSession.id == session_id,
             Employee.organization_id == current_user.organization_id
         )
     )
-    payroll_session = payroll_session.scalar_one_or_none()
+    payroll_session = result.scalar_one_or_none()
     if not payroll_session:
         return create_response(
             success=False,
             message="Payroll session not found",
             status_code=404
         )
-    payroll_session.shift_date = record.shift_date
-    payroll_session.tip_amount = record.tip_amount
-    payroll_session.total_hours = record.total_hours
-    payroll_session.total_pay = record.total_pay
+    for field, value in record.model_dump(exclude_unset=True).items():
+        setattr(payroll_session, field, value)
+
+    duration = record.clock_out_time - record.clock_in_time
+    payroll_session.total_hours = duration.total_seconds() / 3600
+    payroll_session.total_pay = (
+        payroll_session.total_hours * payroll_session.employee.hourly_rate
+        + (record.tip_amount or 0)
+    )
     await db.commit()
     await db.refresh(payroll_session)
     return create_response(
