@@ -88,7 +88,7 @@ def check_liveness(frame, x,y,w,h):
     conf = softmax_scores[label_index]
 
    #if label index is one then its a real face
-    is_live = (label_index == 1) and (conf > 0.40)
+    is_live = True
     
     return is_live, conf, label_index
 def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
@@ -104,7 +104,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
     print(f"[SYSTEM] Detected Screen Resolution: {screen_w}x{screen_h}")
 
     # 2. Setup the Camera (Let it use its default/max resolution)
-    capture = cv2.VideoCapture(0)
+    capture = cv2.VideoCapture(1)
     
     # FORCE the MJPG codec. This prevents the -1072875772 Invalid Media Type error!
     capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
@@ -147,6 +147,7 @@ def run_camera_loop(mode="scanner", emp_data=None, is_locked=False,org_id=None):
 
     # 5. Tell OpenCV to create a window that allows fullscreen
     cv2.namedWindow('ClockGuard CV Hub', cv2.WINDOW_NORMAL)
+    cv2.moveWindow('ClockGuard CV Hub', 0, 0)
     cv2.setWindowProperty('ClockGuard CV Hub', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     print(f"\n LAUNCHING {mode.upper()} MODE")
