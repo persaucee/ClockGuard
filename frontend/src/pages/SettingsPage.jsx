@@ -5,11 +5,18 @@ import Sidebar from '../components/Sidebar';
 import blobAccent from '../assets/Images/Blob.png';
 import api from '../services/apiClient';
 import { QRCodeCanvas } from 'qrcode.react';
+import {
+  FONT_PRESETS,
+  applyFontFamilyPreset,
+  normalizeFontPreset,
+} from '../utils/fontPreferences';
 
 function SettingsPage() {
   const [textSize, setTextSize] = useState(localStorage.getItem('textSize') || 'medium');
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-  const [fontFamily, setFontFamily] = useState(localStorage.getItem('fontFamily') || 'system');
+  const [fontFamily, setFontFamily] = useState(() =>
+    normalizeFontPreset(localStorage.getItem('fontFamily'))
+  );
   const [qrSecret, setQrSecret] = useState('');
   const [setupCode, setSetupCode] = useState('');
   const [setupMode, setSetupMode] = useState(false);
@@ -50,14 +57,7 @@ function SettingsPage() {
       root.classList.remove('dark-theme');
     }
 
-    if (fontFamily === 'serif') {
-      root.style.fontFamily = 'Georgia, Cambria, "Times New Roman", Times, serif';
-    } else if (fontFamily === 'mono') {
-      root.style.fontFamily = '"Courier New", Courier, monospace';
-    } else {
-      root.style.fontFamily =
-        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
-    }
+    applyFontFamilyPreset(fontFamily);
   };
 
   const handleTextSizeChange = (size) => {
@@ -186,22 +186,25 @@ function SettingsPage() {
               <h2>Font Family</h2>
               <div className="setting-options">
                 <button
-                  className={`setting-option ${fontFamily === 'system' ? 'active' : ''}`}
-                  onClick={() => handleFontChange('system')}
+                  type="button"
+                  className={`setting-option ${fontFamily === FONT_PRESETS.NORMAL ? 'active' : ''}`}
+                  onClick={() => handleFontChange(FONT_PRESETS.NORMAL)}
                 >
-                  System
+                  Normal
                 </button>
                 <button
-                  className={`setting-option ${fontFamily === 'serif' ? 'active' : ''}`}
-                  onClick={() => handleFontChange('serif')}
+                  type="button"
+                  className={`setting-option ${fontFamily === FONT_PRESETS.SERIF ? 'active' : ''}`}
+                  onClick={() => handleFontChange(FONT_PRESETS.SERIF)}
                 >
                   Serif
                 </button>
                 <button
-                  className={`setting-option ${fontFamily === 'mono' ? 'active' : ''}`}
-                  onClick={() => handleFontChange('mono')}
+                  type="button"
+                  className={`setting-option ${fontFamily === FONT_PRESETS.ROUNDED ? 'active' : ''}`}
+                  onClick={() => handleFontChange(FONT_PRESETS.ROUNDED)}
                 >
-                  Monospace
+                  Rounded
                 </button>
               </div>
             </div>

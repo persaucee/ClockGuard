@@ -22,7 +22,11 @@ function Navbar() {
         </div>
 
         <div className="navbar-actions">
-          <button className="btn-logout" onClick={handleLogout}>
+          <button
+            type="button"
+            className="btn-logout"
+            onClick={handleLogout}
+          >
             Logout
           </button>
         </div>

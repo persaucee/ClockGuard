@@ -5,7 +5,6 @@ import Sidebar from '../components/Sidebar';
 import { api } from '../services/apiClient';
 import faceVisual from '../assets/Images/CGface.png';
 import blobOne from '../assets/Images/Blob.png';
-import blobTwo from '../assets/Images/Blob2.png';
 import bgChrome from '../assets/Images/bgcg.png';
 
 function getInitials(name) {
@@ -16,24 +15,100 @@ function getInitials(name) {
 }
 
 function getEmployeeId(emp) {
-  return emp?.employee_id || emp?.id || null;
+  if (emp == null) return null;
+  return emp.employee_id ?? emp.id ?? null;
 }
 
 function getEmployeeName(emp) {
   return emp?.name || emp?.employee_name || 'Unknown';
 }
 
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+function sameEmployeeId(a, b) {
+  if (a == null || b == null) return false;
+  return String(a) === String(b);
+}
+
+function normName(s) {
+  return (s || '').trim().toLowerCase();
+}
+
+/**
+ * Clocked in = latest log per person is IN.
+ * Not clocked in = latest is OUT, or no logs. Sub-kind for UI chip: out | no_logs.
+ */
+function deriveRosterFromLogs(employees, logs) {
+  const latestById = new Map();
+  const latestByName = new Map();
+
+  for (const log of logs) {
+    const ts = new Date(log.timestamp).getTime();
+    if (Number.isNaN(ts)) continue;
+    if (log.employee_id != null && log.employee_id !== '') {
+      const k = String(log.employee_id);
+      const prev = latestById.get(k);
+      if (!prev || ts > new Date(prev.timestamp).getTime()) {
+        latestById.set(k, log);
+      }
+    } else {
+      const nk = normName(log.employee_name);
+      if (!nk) continue;
+      const prev = latestByName.get(nk);
+      if (!prev || ts > new Date(prev.timestamp).getTime()) {
+        latestByName.set(nk, log);
+      }
+    }
+  }
+
+  const clockedIn = [];
+  const notClockedIn = [];
+
+  for (const emp of employees) {
+    const id = getEmployeeId(emp);
+    const name = getEmployeeName(emp);
+    const nk = normName(name);
+    let latest = null;
+    if (id != null) latest = latestById.get(String(id));
+    if (!latest) latest = latestByName.get(nk);
+
+    const action = String(latest?.action || '').toUpperCase();
+    const row = {
+      name,
+      employee_id: id,
+      email: emp.email,
+    };
+    if (!latest) {
+      notClockedIn.push({ ...row, notClockedInKind: 'no_logs' });
+    } else if (action === 'IN') {
+      clockedIn.push(row);
+    } else {
+      notClockedIn.push({ ...row, notClockedInKind: 'out' });
+    }
+  }
+
+  const byName = (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+  clockedIn.sort(byName);
+  notClockedIn.sort(byName);
+
+  return { clockedIn, notClockedIn };
+}
+
+const NOT_CLOCKED_IN_PREVIEW = 5;
 
 function DashboardPage() {
   const [clockedInList, setClockedInList] = useState([]);
-  const [recentlyClockedOutList, setRecentlyClockedOutList] = useState([]);
-  const [inactiveList, setInactiveList] = useState([]);
+  const [notClockedInList, setNotClockedInList] = useState([]);
   const [activities, setActivities] = useState([]);
   const [expandedFeedEmployees, setExpandedFeedEmployees] = useState(new Set());
+  const [notClockedInExpanded, setNotClockedInExpanded] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (notClockedInList.length <= NOT_CLOCKED_IN_PREVIEW) {
+      setNotClockedInExpanded(false);
+    }
+  }, [notClockedInList.length]);
 
   // Initial data fetch
   useEffect(() => {
@@ -42,48 +117,18 @@ function DashboardPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch 200 logs so we have enough coverage for the 24h "recently clocked out" window
-        const [status, recentLogs] = await Promise.all([
-          api.attendance.getStatus(),
-          api.attendance.getRecentLogs(200),
+        const [allLogs, employees] = await Promise.all([
+          api.attendance.getAllLogs(),
+          api.employees.getAll(),
         ]);
 
-        setClockedInList(status.clocked_in || []);
-        setInactiveList(status.inactive || []);
-
-        // Derive "recently clocked out": employees whose most recent log is OUT within 24h
-        // and who are not already in clocked_in (backend is authoritative for active state)
-        const clockedInIds = new Set(
-          (status.clocked_in || []).map((e) => getEmployeeId(e))
-        );
-        const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
-
-        const latestLogPerEmployee = {};
-        recentLogs.forEach((log) => {
-          const empId = log.employee_id;
-          if (!empId) return;
-          const existing = latestLogPerEmployee[empId];
-          if (!existing || new Date(log.timestamp) > new Date(existing.timestamp)) {
-            latestLogPerEmployee[empId] = log;
-          }
-        });
-
-        const derivedRecentlyClockedOut = Object.values(latestLogPerEmployee)
-          .filter(
-            (log) =>
-              log.action === 'OUT' &&
-              new Date(log.timestamp).getTime() >= cutoff &&
-              !clockedInIds.has(log.employee_id)
-          )
-          .map((log) => ({
-            name: log.employee_name || 'Unknown',
-            employee_id: log.employee_id,
-          }));
-
-        setRecentlyClockedOutList(derivedRecentlyClockedOut);
+        allLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const { clockedIn, notClockedIn } = deriveRosterFromLogs(employees, allLogs);
+        setClockedInList(clockedIn);
+        setNotClockedInList(notClockedIn);
 
         // Only show the 50 most recent events in the activity feed
-        const initialActivities = recentLogs.slice(0, 50).map((log, i) => ({
+        const initialActivities = allLogs.slice(0, 50).map((log, i) => ({
           id: log.id || `${log.employee_id}-${log.timestamp}-${i}`,
           timestamp: log.timestamp,
           employeeName: log.employee_name || 'Unknown',
@@ -135,34 +180,43 @@ function DashboardPage() {
 
         setActivities(prev => [newActivity, ...prev].slice(0, 50));
 
+        const eid = data.match.employee_id;
         const employeeEntry = {
           name: data.match.name || 'Unknown',
-          employee_id: data.match.employee_id,
+          employee_id: eid,
           email: data.match.email,
         };
+        const notInEntry = { ...employeeEntry, notClockedInKind: 'out' };
 
         if (data.action === 'IN') {
-          setClockedInList(prev => {
-            const alreadyIn = prev.some(e => getEmployeeId(e) === data.match.employee_id);
-            if (alreadyIn) return prev;
-            return [employeeEntry, ...prev];
+          setClockedInList((prev) => {
+            if (eid == null) return prev;
+            const has = prev.some((e) => sameEmployeeId(getEmployeeId(e), eid));
+            if (has) return prev;
+            return [employeeEntry, ...prev].sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+            );
           });
-          // Clear from both OUT-related lists when someone clocks back in
-          setRecentlyClockedOutList(prev =>
-            prev.filter(e => getEmployeeId(e) !== data.match.employee_id)
-          );
-          setInactiveList(prev =>
-            prev.filter(e => getEmployeeId(e) !== data.match.employee_id)
+          setNotClockedInList((prev) =>
+            prev.filter((e) => !sameEmployeeId(getEmployeeId(e), eid))
           );
         } else if (data.action === 'OUT') {
-          setRecentlyClockedOutList(prev => {
-            const alreadyOut = prev.some(e => getEmployeeId(e) === data.match.employee_id);
-            if (alreadyOut) return prev;
-            return [employeeEntry, ...prev];
-          });
-          setClockedInList(prev =>
-            prev.filter(e => getEmployeeId(e) !== data.match.employee_id)
+          setClockedInList((prev) =>
+            eid == null
+              ? prev
+              : prev.filter((e) => !sameEmployeeId(getEmployeeId(e), eid))
           );
+          setNotClockedInList((prev) => {
+            if (eid == null) return prev;
+            if (prev.some((e) => sameEmployeeId(getEmployeeId(e), eid))) {
+              return prev.map((e) =>
+                sameEmployeeId(getEmployeeId(e), eid) ? { ...e, ...notInEntry } : e
+              );
+            }
+            return [...prev, notInEntry].sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+            );
+          });
         }
       } catch (err) {
         console.error('Error parsing websocket message:', err);
@@ -233,17 +287,31 @@ function DashboardPage() {
     });
   };
 
-  const renderEmployeeCard = (emp, kind) => {
+  const renderEmployeeCard = (emp) => {
     const id = getEmployeeId(emp);
     const name = getEmployeeName(emp);
+    const isIn = emp.notClockedInKind == null;
+    const variant = isIn
+      ? 'in'
+      : emp.notClockedInKind === 'out'
+        ? 'out'
+        : 'nologs';
+    const chip = isIn
+      ? 'ACTIVE'
+      : emp.notClockedInKind === 'out'
+        ? 'OUT'
+        : 'NO LOGS';
     return (
-      <div key={id || name} className={`person-card person-card--${kind}`}>
+      <div
+        key={id != null ? String(id) : name}
+        className={`person-card person-card--${variant}`}
+      >
         <div className="person-card__avatar">{getInitials(name)}</div>
         <div className="person-card__body">
           <span className="person-card__name">{name}</span>
           {id && <span className="person-card__id">ID · {id}</span>}
         </div>
-        <span className="person-card__chip">{kind === 'in' ? 'ACTIVE' : kind === 'out' ? 'OUT · 24H' : 'OFFLINE'}</span>
+        <span className="person-card__chip">{chip}</span>
       </div>
     );
   };
@@ -255,33 +323,14 @@ function DashboardPage() {
         <Sidebar />
         <main className="page-content">
           <div className="dashboard-shell">
-            <section className="hero">
-              <div className="hero-meta">
-                <span className="hero-meta-tag">
-                  <span
-                    className={`hero-dot${isConnected ? ' hero-dot--live' : ''}`}
-                  />
-                  {isConnected ? 'LIVE · BIOMETRIC FEED' : 'CONNECTING…'}
-                </span>
-                <span className="hero-meta-id">[ 01 ] · COMMAND</span>
-              </div>
-
-              <h1 className="hero-title">LIVE METRICS</h1>
+            <section className="hero hero--compact">
+              <h1 className="hero-title">
+                LIVE <span className="display-title--chrome">METRICS</span>
+              </h1>
 
               <div className="hero-stage">
-                <div
-                  className="hero-stage__bg"
-                  style={{ backgroundImage: `url(${bgChrome})` }}
-                  aria-hidden="true"
-                />
+                <div className="hero-stage__bg" aria-hidden="true" />
                 <div className="hero-stage__overlay" aria-hidden="true" />
-
-                <div className="hero-stage__corner hero-stage__corner--left">
-                  <span className="hero-stage__corner-label">Active</span>
-                  <span className="hero-stage__corner-value">
-                    {loading ? '—' : String(clockedInList.length).padStart(2, '0')}
-                  </span>
-                </div>
 
                 <div className="hero-stage__corner hero-stage__corner--right">
                   <p className="hero-stage__lede">
@@ -290,24 +339,11 @@ function DashboardPage() {
                   </p>
                   <div className="hero-stage__meta-grid">
                     <span>
-                      <em>Inactive</em>
-                      <strong>
-                        {loading ? '—' : String(inactiveList.length).padStart(2, '0')}
-                      </strong>
-                    </span>
-                    <span>
                       <em>Channel</em>
                       <strong>{isConnected ? 'ONLINE' : 'OFFLINE'}</strong>
                     </span>
                   </div>
                 </div>
-
-                <img
-                  src={blobOne}
-                  alt=""
-                  className="hero-blob hero-blob--top"
-                  aria-hidden="true"
-                />
               </div>
 
               <img
@@ -324,55 +360,36 @@ function DashboardPage() {
               </div>
             )}
 
-            <section className="numbers-section">
-              <div className="numbers-section__head">
-                <span className="section-index">[ 03 ] · TODAY</span>
+            <div
+              className="dashboard-status-twin dashboard-status-twin--post-hero"
+              aria-label="Attendance headcount"
+            >
+              <div className="status-tile status-tile--in">
+                <span className="status-tile__label">
+                  Clocked <span className="display-title--chrome">in</span>
+                </span>
+                <span className="status-tile__value">
+                  {loading ? '—' : String(clockedInList.length).padStart(2, '0')}
+                </span>
               </div>
-
-              <div className="numbers-grid">
-                <div className="number-card number-card--accent">
-                  <span className="number-card__label">Clocked In</span>
-                  <span className="number-card__value">
-                    {loading ? '—' : String(clockedInList.length).padStart(2, '0')}
-                  </span>
-                  <span className="number-card__hint">Currently active</span>
-                </div>
-                <div className="number-card">
-                  <span className="number-card__label">Recently Out</span>
-                  <span className="number-card__value">
-                    {loading ? '—' : String(recentlyClockedOutList.length).padStart(2, '0')}
-                  </span>
-                  <span className="number-card__hint">Last 24 hours</span>
-                </div>
-                <div className="number-card">
-                  <span className="number-card__label">Inactive</span>
-                  <span className="number-card__value">
-                    {loading ? '—' : String(inactiveList.length).padStart(2, '0')}
-                  </span>
-                  <span className="number-card__hint">No recent activity</span>
-                </div>
+              <div className="status-tile">
+                <span className="status-tile__label">
+                  Not clocked <span className="display-title--chrome">in</span>
+                </span>
+                <span className="status-tile__value">
+                  {loading ? '—' : String(notClockedInList.length).padStart(2, '0')}
+                </span>
               </div>
-            </section>
-
-            <div className="chrome-strip" aria-hidden="true">
-              <div
-                className="chrome-strip__bg"
-                style={{ backgroundImage: `url(${bgChrome})` }}
-              />
-              <span className="chrome-strip__label">
-                ACTIVE PULSE · LIVE BIOMETRIC FEED · {isConnected ? 'ONLINE' : 'OFFLINE'}
-              </span>
             </div>
 
             <section className="feed-section">
               <div className="feed-section__head">
-                <span className="section-index">[ 04 ] · LIVE FEED</span>
-                <h2 className="feed-section__title">
-                  LIVE<br />
-                  <span className="display-title--silver">FEED.</span>
+                <h2 className="feed-section__title dashboard-section-title">
+                  Live <span className="display-title--chrome">Feed</span>
                 </h2>
                 <span
                   className={`feed-section__pulse${isConnected ? ' feed-section__pulse--on' : ''}`}
+                  title={isConnected ? 'Live' : 'Connecting'}
                   aria-hidden="true"
                 />
               </div>
@@ -465,34 +482,38 @@ function DashboardPage() {
               </div>
             </section>
 
-            <section className="workforce-section">
-              <img
-                src={blobTwo}
-                alt=""
-                className="workforce-blob"
+            <section
+              className="workforce-section"
+              style={{ '--roster-chrome': `url(${bgChrome})` }}
+            >
+              <div
+                className="workforce-section__chrome"
+                style={{ backgroundImage: `url(${bgChrome})` }}
                 aria-hidden="true"
               />
               <div className="workforce-section__head">
-                <div className="workforce-section__head-left">
-                  <span className="section-index">[ 05 ] · ROSTER</span>
-                  <h2 className="workforce-section__title">
-                    KNOW<br />
-                    <span className="display-title--chrome">WHO IS</span><br />
-                    ON THE FLOOR.
-                  </h2>
-                </div>
-                <p className="workforce-section__lede">
-                  A rolling view of who's active, who's just left, and who has
-                  been off the schedule — all updated the moment a verification
-                  fires.
-                </p>
+                <img
+                  src={blobOne}
+                  alt=""
+                  className="workforce-title-blob"
+                  aria-hidden="true"
+                />
+                <h2 className="workforce-section__title dashboard-section-title dashboard-section-title--roster">
+                  Roster
+                </h2>
+                <img
+                  src={blobOne}
+                  alt=""
+                  className="workforce-title-blob workforce-title-blob--mirror"
+                  aria-hidden="true"
+                />
               </div>
-
               <div className="workforce-grid">
                 <div className="workforce-col workforce-col--in">
                   <div className="workforce-col__head">
-                    <span className="workforce-col__index">01</span>
-                    <span className="workforce-col__title">CLOCKED IN</span>
+                    <span className="workforce-col__title">
+                      CLOCKED <span className="display-title--chrome">IN</span>
+                    </span>
                     <span className="workforce-col__count">
                       {loading ? '—' : clockedInList.length}
                     </span>
@@ -508,18 +529,19 @@ function DashboardPage() {
                       </div>
                     ) : (
                       <div className="workforce-list">
-                        {clockedInList.map((emp) => renderEmployeeCard(emp, 'in'))}
+                        {clockedInList.map((emp) => renderEmployeeCard(emp))}
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="workforce-col workforce-col--out">
+                <div className="workforce-col workforce-col--notin">
                   <div className="workforce-col__head">
-                    <span className="workforce-col__index">02</span>
-                    <span className="workforce-col__title">RECENTLY OUT</span>
+                    <span className="workforce-col__title">
+                      NOT CLOCKED <span className="display-title--chrome">IN</span>
+                    </span>
                     <span className="workforce-col__count">
-                      {loading ? '—' : recentlyClockedOutList.length}
+                      {loading ? '—' : notClockedInList.length}
                     </span>
                   </div>
                   <div className="workforce-col__body">
@@ -527,39 +549,35 @@ function DashboardPage() {
                       <div className="workforce-empty">
                         <p>Loading…</p>
                       </div>
-                    ) : recentlyClockedOutList.length === 0 ? (
+                    ) : notClockedInList.length === 0 ? (
                       <div className="workforce-empty">
-                        <p>No clock-outs in the last 24h</p>
+                        <p>All roster employees are clocked in</p>
                       </div>
                     ) : (
-                      <div className="workforce-list">
-                        {recentlyClockedOutList.map((emp) => renderEmployeeCard(emp, 'out'))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="workforce-col workforce-col--inactive">
-                  <div className="workforce-col__head">
-                    <span className="workforce-col__index">03</span>
-                    <span className="workforce-col__title">INACTIVE</span>
-                    <span className="workforce-col__count">
-                      {loading ? '—' : inactiveList.length}
-                    </span>
-                  </div>
-                  <div className="workforce-col__body">
-                    {loading ? (
-                      <div className="workforce-empty">
-                        <p>Loading…</p>
-                      </div>
-                    ) : inactiveList.length === 0 ? (
-                      <div className="workforce-empty">
-                        <p>No inactive employees</p>
-                      </div>
-                    ) : (
-                      <div className="workforce-list">
-                        {inactiveList.map((emp) => renderEmployeeCard(emp, 'inactive'))}
-                      </div>
+                      <>
+                        <div className="workforce-list">
+                          {(notClockedInExpanded
+                            ? notClockedInList
+                            : notClockedInList.slice(0, NOT_CLOCKED_IN_PREVIEW)
+                          ).map((emp) => renderEmployeeCard(emp))}
+                        </div>
+                        {notClockedInList.length > NOT_CLOCKED_IN_PREVIEW && (
+                          <div className="workforce-col__more">
+                            <button
+                              type="button"
+                              className="workforce-show-more"
+                              onClick={() =>
+                                setNotClockedInExpanded((prev) => !prev)
+                              }
+                              aria-expanded={notClockedInExpanded}
+                            >
+                              {notClockedInExpanded
+                                ? 'Show less'
+                                : `Show ${notClockedInList.length - NOT_CLOCKED_IN_PREVIEW} more`}
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -572,7 +590,10 @@ function DashboardPage() {
                 style={{ backgroundImage: `url(${bgChrome})` }}
                 aria-hidden="true"
               />
-              <span className="dashboard-foot__brand">CLOCKGUARD</span>
+              <span className="dashboard-foot__brand">
+                CLOCK
+                <span className="display-title--chrome">GUARD</span>
+              </span>
               <span className="dashboard-foot__copy">
                 BIOMETRIC ATTENDANCE · POWERED BY FACIAL VERIFICATION
               </span>

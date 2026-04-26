@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import AppRouter from './routes/AppRouter';
+import { applyFontFamilyPreset, normalizeFontPreset } from './utils/fontPreferences';
 import './index.css';
 import './styles/global.css';
 import './App.css';
@@ -8,7 +9,7 @@ function App() {
   useEffect(() => {
     const textSize = localStorage.getItem('textSize') || 'medium';
     const theme = localStorage.getItem('theme') || 'light';
-    const fontFamily = localStorage.getItem('fontFamily') || 'system';
+    const fontPreset = normalizeFontPreset(localStorage.getItem('fontFamily'));
 
     const root = document.documentElement;
 
@@ -26,14 +27,7 @@ function App() {
       root.classList.remove('dark-theme');
     }
 
-    if (fontFamily === 'serif') {
-      root.style.fontFamily = 'Georgia, Cambria, "Times New Roman", Times, serif';
-    } else if (fontFamily === 'mono') {
-      root.style.fontFamily = '"JetBrains Mono", "SF Mono", "Courier New", monospace';
-    } else {
-      root.style.fontFamily =
-        '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
-    }
+    applyFontFamilyPreset(fontPreset);
   }, []);
 
   return <AppRouter />;
