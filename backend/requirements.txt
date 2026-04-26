@@ -1,0 +1,17 @@
+fastapi>=0.95.0
+uvicorn[standard]>=0.22.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-dotenv>=1.0.0
+pydantic>=1.10.0
+pydantic[email]
+sqlalchemy
+asyncpg
+pgvector>=0.2.0
+apscheduler
+pyotp
+pytest
+httpx
+pytest-asyncio
+gunicorn

@@ -1,0 +1,153 @@
+from datetime import date, datetime, time
+from typing import Generic, Optional, TypeVar
+from uuid import UUID
+from enum import Enum
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+T = TypeVar("T")
+
+class Action(str, Enum):
+    IN = "IN"
+    OUT = "OUT"
+
+class APIResponse(BaseModel, Generic[T]):
+    success: bool
+    data: Optional[T] = None
+    message: Optional[str] = None
+    meta: Optional[dict] = None
+    status_code: int = 200
+
+class RegisterData(BaseModel):
+    first_name: str
+    last_name: str
+
+class RegisterDataRequest(RegisterData):
+    username: str = Field(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_]+$')
+    password: str = Field(min_length=8, max_length=72)
+    organization_name: str = Field(min_length=1, max_length=200)
+    open_time: Optional[time] = None
+    close_time: Optional[time] = None
+
+class RegisterDataResponse(RegisterData):
+    username: str
+    organization_id: UUID
+    organization_name: str
+    open_time: Optional[time]
+    close_time: Optional[time]
+
+class LoginData(BaseModel):
+    username: str
+    password: str
+    
+class UserData(BaseModel):
+    username: str
+    first_name: str
+    last_name: str
+    company: Optional[str] = None
+    organization_id: UUID
+
+#Employee Schemas
+
+class EmployeeBase(BaseModel):
+    name: str
+    hourly_rate: Optional[float] = None
+    email: Optional[EmailStr] = None
+
+class EmployeeCreate(EmployeeBase):
+    embedding: list[float] = Field(min_length=512, max_length=512)
+
+class EmployeeUpdate(EmployeeBase):
+    pass
+
+class EmployeeResponse(EmployeeBase):
+    id: UUID
+    created_at: datetime
+    updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+class VerifyRequest(BaseModel):
+    embedding: list[float] = Field(min_length=512, max_length=512)
+    
+class OrganizationBase(BaseModel):
+    default_open_time: Optional[time] = None
+    default_close_time: Optional[time] = None
+    @field_validator("default_open_time", "default_close_time", mode="before")
+    @classmethod
+    def enforce_hhmm(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, str):
+            if len(v) != 5 or v[2] != ":":
+                raise ValueError("Time must be in HH:MM format")
+            v = time.fromisoformat(v)
+        if v.second != 0 or v.microsecond != 0:
+            raise ValueError("Time must be in HH:MM format with no seconds")
+        return v
+    
+class OrganizationRequest(OrganizationBase):
+    pass
+
+class OrganizationResponse(OrganizationBase):
+    pass
+
+class AttendanceRecordBase(BaseModel):
+    id: UUID
+    employee_name: str
+    action: Action
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class AttendanceRecordResponse(AttendanceRecordBase):
+    pass
+
+
+class ClockStatusData(BaseModel):
+    clocked_in: list[EmployeeResponse]
+    inactive: list[EmployeeResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PayrollSessionBase(BaseModel):
+    shift_date: date
+    clock_in_time: datetime
+    clock_out_time: datetime
+    tip_amount: Optional[float] = None
+
+class PayrollSessionCreate(PayrollSessionBase):
+    pass
+    
+class PayrollSessionResponse(PayrollSessionBase):
+    id: UUID
+    employee_id: UUID
+    employee_name: str
+    processed: bool
+    requires_admin_review: bool
+    total_hours: float
+    total_pay: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+# 2FA Schemas
+class LoginResponseData(BaseModel):
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    organization_id: Optional[UUID] = None
+    two_factor_required: bool = False
+    temp_token: Optional[str] = None
+
+
+class Verify2FARequest(BaseModel):
+    temp_token: str
+    code: str
+
+
+class TwoFactorSetupResponse(BaseModel):
+    secret: str
+    otpauth_url: str
+
+
+class TwoFactorCodeRequest(BaseModel):
+    code: str

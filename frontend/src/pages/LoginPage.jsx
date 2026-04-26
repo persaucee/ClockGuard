@@ -18,9 +18,18 @@ function LoginPage() {
     try {
       const response = await api.auth.login({ username, password });
 
+      if (response.data?.two_factor_required) {
+        sessionStorage.setItem('temp_token', response.data.temp_token);
+        navigate('/2fa');
+        return;
+      }
+
       if (response.success) {
         navigate('/dashboard');
+        return;
       }
+
+      setError('Unexpected login response.');
     } catch (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
     }
