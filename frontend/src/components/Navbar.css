@@ -1,114 +1,99 @@
-/* Navbar Component Styles - ClockGuard */
+/* =========================================================================
+   Navbar — minimal editorial top bar (themable)
+   ========================================================================= */
 
 .navbar {
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow-md);
   position: sticky;
   top: 0;
   z-index: 1000;
-  border-bottom: 1px solid var(--color-border);
+  background: var(--bg-glass);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .navbar-container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: 18px clamp(20px, 5vw, 64px);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--spacing-lg);
 }
 
-/* Logo Section */
 .navbar-logo {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: 12px;
+  text-decoration: none;
+  color: var(--text-primary);
 }
 
 .navbar-logo img {
-  height: 40px;
+  height: clamp(56px, 5.5vw, 76px);
   width: auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 127, 128, 0.1));
-  transition: transform var(--transition-fast);
-}
-
-.navbar-logo img:hover {
-  transform: scale(1.02);
+  filter: none;
+  flex-shrink: 0;
 }
 
 .navbar-brand {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  letter-spacing: -0.01em;
-  display: none; /* Hidden on mobile, shown on desktop */
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  display: inline-block;
+  line-height: 1;
 }
 
-/* Actions Section */
 .navbar-actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
 }
 
-/* Logout Button */
 .btn-logout {
-  background-color: transparent;
-  color: var(--color-primary);
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 0.95rem;
+  background: transparent;
+  color: var(--text-primary);
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   cursor: pointer;
   transition: all var(--transition-fast);
-  border: 2px solid var(--color-primary);
+  border: 1px solid var(--border-strong);
 }
 
 .btn-logout:hover {
-  background-color: var(--color-primary);
-  color: white;
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border-color: var(--btn-bg);
 }
 
 .btn-logout:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
-/* Tablet and up */
-@media (min-width: 768px) {
-  .navbar-brand {
-    display: inline-block;
-  }
-  
-  .navbar-container {
-    padding: var(--spacing-md) var(--spacing-xxl);
-  }
-}
-
-/* Desktop and up */
-@media (min-width: 1024px) {
-  .navbar-logo img {
-    height: 45px;
-  }
-  
-  .navbar-brand {
-    font-size: 1.375rem;
-  }
-}
-
-/* Mobile optimizations */
 @media (max-width: 640px) {
   .navbar-container {
-    padding: var(--spacing-sm) var(--spacing-lg);
+    padding: 14px 18px;
   }
-  
+
   .navbar-logo img {
-    height: 36px;
+    height: clamp(48px, 14vw, 64px);
   }
-  
+
+  .navbar-brand {
+    font-size: clamp(1.05rem, 4.2vw, 1.35rem);
+  }
+
   .btn-logout {
-    padding: 8px 16px;
-    font-size: 0.875rem;
+    padding: 8px 14px;
+    font-size: 0.65rem;
   }
 }

@@ -55,14 +55,12 @@ export const api = {
       return await response.json();
     },
     logout: async () => {
-      console.log('Logout endpoint not yet implemented');
       return { success: false, message: 'Not implemented' };
     },
   },
-  
+
   users: {
     getAll: async () => {
-      console.log('Get users endpoint not yet implemented');
       return [];
     },
   },
@@ -148,8 +146,7 @@ export const api = {
 
         allLogs.push(...pageData);
 
-        // Stop when we have fetched everything.
-        // Prefer explicit total/count fields; fall back to a short page heuristic.
+        // Stop when the page is short or we've hit the declared total.
         const total = result.total ?? result.count ?? null;
         if (total !== null ? allLogs.length >= total : pageData.length < PAGE_SIZE) {
           break;

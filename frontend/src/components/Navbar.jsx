@@ -15,8 +15,10 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-container">
         <div className="navbar-logo">
-          <img src={clockGuardLogo} alt="ClockGuard Logo" />
-          <span className="navbar-brand">ClockGuard</span>
+          <img src={clockGuardLogo} alt="" />
+          <span className="navbar-brand">
+            CLOCK<span className="display-title--chrome">GUARD</span>
+          </span>
         </div>
 
         <div className="navbar-actions">

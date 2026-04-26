@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
 import AppRouter from './routes/AppRouter';
+import './index.css';
 import './styles/global.css';
+import './App.css';
 
 function App() {
   useEffect(() => {
@@ -9,7 +11,7 @@ function App() {
     const fontFamily = localStorage.getItem('fontFamily') || 'system';
 
     const root = document.documentElement;
-    
+
     if (textSize === 'small') {
       root.style.fontSize = '14px';
     } else if (textSize === 'large') {
@@ -17,17 +19,20 @@ function App() {
     } else {
       root.style.fontSize = '16px';
     }
-    
+
     if (theme === 'dark') {
       root.classList.add('dark-theme');
+    } else {
+      root.classList.remove('dark-theme');
     }
-    
+
     if (fontFamily === 'serif') {
       root.style.fontFamily = 'Georgia, Cambria, "Times New Roman", Times, serif';
     } else if (fontFamily === 'mono') {
-      root.style.fontFamily = '"Courier New", Courier, monospace';
+      root.style.fontFamily = '"JetBrains Mono", "SF Mono", "Courier New", monospace';
     } else {
-      root.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
+      root.style.fontFamily =
+        '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
     }
   }, []);
 

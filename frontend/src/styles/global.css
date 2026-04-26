@@ -1,47 +1,79 @@
-/**
- * ClockGuard Global Styles
- * 
- * Professional styling with ClockGuard brand colors applied.
- */
+/* =========================================================================
+   ClockGuard — Editorial Chrome Theme
+   Themable: Light is default (white paper). Dark is opt-in via .dark-theme
+   on <html>. Same chrome-teal accents in both modes.
+   ========================================================================= */
 
-/* CSS Variables - ClockGuard Brand Colors */
 :root {
-  /* Primary Colors (Darker Teal) */
-  --color-primary: #007F80;
-  --color-primary-hover: #006566;
-  --color-primary-light: #009C9D;
-  
-  /* Accent Colors (Vibrant Teal) */
-  --color-accent: #03C0C1;
-  --color-accent-hover: #009C9D;
-  --color-accent-light: #00D8D8;
-  
-  /* Backgrounds */
-  --color-background: #f8fafc;
-  --color-background-alt: #f1f5f9;
-  --color-surface: #ffffff;
-  
-  /* Text */
-  --color-text: #1e293b;
-  --color-text-secondary: #64748b;
-  --color-text-light: #94a3b8;
-  
+  /* ------- Surfaces ------- */
+  --bg-base: #f6f5f1;          /* off-white editorial paper */
+  --bg-surface: #ffffff;       /* card/panel */
+  --bg-surface-raised: #fbfaf6;
+  --bg-deep: #ebeae5;          /* nested timeline / inset bg */
+  --bg-input: #ffffff;
+  --bg-overlay-soft: rgba(0, 0, 0, 0.025);
+  --bg-overlay-medium: rgba(0, 0, 0, 0.06);
+  --bg-overlay-strong: rgba(0, 0, 0, 0.78);
+  --bg-glass: rgba(255, 255, 255, 0.7);
+  --bg-input-focus: #ffffff;
+
+  /* ------- Ink (text) ------- */
+  --text-primary: #0a0a0a;
+  --text-secondary: #5a5a60;
+  --text-tertiary: #8a8a90;
+  --text-muted: rgba(10, 10, 10, 0.55);
+  --text-inverse: #ffffff;
+
+  /* ------- Borders / dividers ------- */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-default: rgba(0, 0, 0, 0.12);
+  --border-strong: rgba(0, 0, 0, 0.22);
+  --border-on-image: rgba(0, 0, 0, 0.12);
+
+  /* ------- Buttons (the "primary surface" button) ------- */
+  --btn-bg: #0a0a0a;
+  --btn-bg-hover: #1d1d1f;
+  --btn-text: #ffffff;
+  --btn-bg-soft: rgba(0, 0, 0, 0.05);
+  --btn-bg-soft-hover: rgba(0, 0, 0, 0.1);
+
+  /* Image filters (logos, tinted artwork) */
+  --logo-filter: brightness(0);                /* logo becomes black on white */
+  --login-bg-filter: none;                     /* the login.png is already light/white */
+
+  /* Brand chrome — silver/teal liquid metal (same in both themes) */
+  --color-primary: #1d8585;
+  --color-primary-hover: #2bb0b1;
+  --color-primary-light: #5fe3e4;
+  --color-accent: #1d8585;
+  --color-accent-hover: #2bb0b1;
+  --color-accent-light: #5fe3e4;
+
   /* Semantic */
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-  --color-info: #00B4D8;
-  
-  /* Borders */
-  --color-border: #e2e8f0;
-  --color-border-light: #f1f5f9;
-  
+  --color-success: #166534;
+  --color-warning: #b45309;
+  --color-error: #b91c1c;
+  --color-info: #1d8585;
+
+  /* Legacy aliases — keep so older rules still resolve */
+  --color-text: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-light: var(--text-tertiary);
+  --color-background: var(--bg-base);
+  --color-background-alt: var(--bg-surface-raised);
+  --color-surface: var(--bg-surface);
+  --color-surface-2: var(--bg-deep);
+  --color-border: var(--border-subtle);
+  --color-border-light: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(43, 95, 141, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(43, 95, 141, 0.08), 0 2px 4px -1px rgba(43, 95, 141, 0.05);
-  --shadow-lg: 0 10px 15px -3px rgba(43, 95, 141, 0.1), 0 4px 6px -2px rgba(43, 95, 141, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(43, 95, 141, 0.1), 0 10px 10px -5px rgba(43, 95, 141, 0.04);
-  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 24px 50px -20px rgba(0, 0, 0, 0.18);
+  --shadow-xl: 0 40px 80px -30px rgba(0, 0, 0, 0.22);
+  --shadow-glow: 0 0 60px rgba(95, 227, 228, 0.18);
+
   /* Spacing */
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -49,47 +81,84 @@
   --spacing-lg: 24px;
   --spacing-xl: 32px;
   --spacing-xxl: 48px;
-  
-  /* Border Radius */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --spacing-3xl: 80px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
   --radius-xl: 16px;
-  
+
   /* Transitions */
   --transition-fast: 150ms ease-in-out;
   --transition-normal: 250ms ease-in-out;
   --transition-slow: 350ms ease-in-out;
+
+  /* Typography stacks */
+  --font-display: 'Anton', 'Archivo Black', Impact, 'Helvetica Neue Condensed', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Courier New', monospace;
 }
 
+/* =========================================================================
+   DARK THEME — applied to :root.dark-theme via the Settings page
+   ========================================================================= */
 :root.dark-theme {
-  --color-primary: #00b4b5;
-  --color-primary-hover: #00d8d9;
-  --color-primary-light: #00c9ca;
-  
-  --color-accent: #03c0c1;
-  --color-accent-hover: #00d8d9;
-  --color-accent-light: #00f0f1;
-  
-  --color-background: #0f172a;
-  --color-background-alt: #1e293b;
-  --color-surface: #1e293b;
-  
-  --color-text: #f1f5f9;
-  --color-text-secondary: #cbd5e1;
-  --color-text-light: #94a3b8;
-  
-  --color-border: #334155;
-  --color-border-light: #475569;
-  
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+  --bg-base: #000000;
+  --bg-surface: #0f0f12;
+  --bg-surface-raised: #15151a;
+  --bg-deep: rgba(0, 0, 0, 0.4);
+  --bg-input: rgba(0, 0, 0, 0.4);
+  --bg-overlay-soft: rgba(255, 255, 255, 0.025);
+  --bg-overlay-medium: rgba(255, 255, 255, 0.06);
+  --bg-overlay-strong: rgba(0, 0, 0, 0.78);
+  --bg-glass: rgba(0, 0, 0, 0.55);
+  --bg-input-focus: rgba(0, 0, 0, 0.55);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-tertiary: rgba(255, 255, 255, 0.45);
+  --text-muted: rgba(255, 255, 255, 0.55);
+  --text-inverse: #050505;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-on-image: rgba(255, 255, 255, 0.18);
+
+  --btn-bg: #ffffff;
+  --btn-bg-hover: #ebebeb;
+  --btn-text: #050505;
+  --btn-bg-soft: rgba(255, 255, 255, 0.06);
+  --btn-bg-soft-hover: rgba(255, 255, 255, 0.1);
+
+  --logo-filter: brightness(0) invert(1);
+  --login-bg-filter: invert(1) hue-rotate(160deg) saturate(0.85) brightness(0.8);
+
+  --color-primary: #5fe3e4;
+  --color-primary-hover: #8ff4f5;
+  --color-primary-light: #b8fafa;
+  --color-accent: #5fe3e4;
+  --color-accent-hover: #8ff4f5;
+  --color-accent-light: #c8fbfb;
+
+  --color-success: #5fe3a3;
+  --color-warning: #f5b454;
+  --color-error: #ff6b6b;
+  --color-info: #5fe3e4;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 24px 50px -20px rgba(0, 0, 0, 0.8);
+  --shadow-xl: 0 40px 80px -30px rgba(0, 0, 0, 0.9);
 }
 
-/* CSS Reset & Base Styles */
-*, *::before, *::after {
+/* =========================================================================
+   Base / reset
+   ========================================================================= */
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -97,55 +166,67 @@
 
 html {
   font-size: 16px;
+  background: var(--bg-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 250ms ease;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
-  line-height: 1.6;
-  color: var(--color-text);
-  background-color: var(--color-background);
+  line-height: 1.55;
+  color: var(--text-primary);
+  background-color: var(--bg-base);
   min-height: 100vh;
+  transition: background-color 250ms ease, color 250ms ease;
 }
 
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  line-height: 1.25;
-  margin-bottom: 0.5em;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md);
 }
 
 h1 {
-  font-size: 2.25rem;
+  font-size: clamp(2rem, 5.5vw, 4rem);
+  letter-spacing: -0.025em;
 }
 
 h2 {
-  font-size: 1.875rem;
+  font-size: clamp(1.5rem, 3.5vw, 2.5rem);
+  letter-spacing: -0.02em;
 }
 
 h3 {
-  font-size: 1.5rem;
+  font-size: clamp(1.125rem, 2.2vw, 1.5rem);
+  letter-spacing: -0.01em;
 }
 
 p {
   margin-bottom: 1em;
+  color: var(--text-secondary);
 }
 
-/* Links */
 a {
-  color: var(--color-primary);
+  color: var(--text-primary);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
 
 a:hover {
-  color: var(--color-primary-hover);
+  color: var(--color-primary);
 }
 
-/* Buttons */
 button {
   font-family: inherit;
   cursor: pointer;
@@ -153,138 +234,213 @@ button {
   outline: none;
   background: none;
   transition: all var(--transition-fast);
+  color: inherit;
 }
 
-/* Primary Button Style */
+/* =========================================================================
+   Reusable buttons
+   ========================================================================= */
 .btn-primary {
-  background-color: var(--color-primary);
-  color: white;
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-sm);
+  transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+  box-shadow: var(--shadow-md);
   border: none;
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  box-shadow: var(--shadow-md);
+  background: var(--btn-bg-hover);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: var(--shadow-sm);
 }
 
-/* Secondary Button Style */
 .btn-secondary {
-  background-color: var(--color-accent);
-  color: white;
-  padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  box-shadow: var(--shadow-sm);
-  border: none;
+  background: var(--btn-bg-soft);
+  color: var(--text-primary);
+  padding: 14px 28px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-strong);
 }
 
 .btn-secondary:hover {
-  background-color: var(--color-accent-hover);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
+  background: var(--btn-bg-soft-hover);
+  border-color: var(--text-primary);
 }
 
-/* Outline Button Style */
 .btn-outline {
-  background-color: transparent;
-  color: var(--color-primary);
+  background: transparent;
+  color: var(--text-primary);
   padding: 12px 24px;
-  border-radius: var(--radius-md);
-  font-weight: 500;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  border: 2px solid var(--color-primary);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-strong);
 }
 
 .btn-outline:hover {
-  background-color: var(--color-primary);
-  color: white;
+  background: var(--btn-bg-soft);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
-/* Input elements */
-input, textarea, select {
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
+  color: var(--text-primary);
 }
 
-/* Remove default focus outline and add custom one */
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 1px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Utility Classes */
+/* =========================================================================
+   Layout helpers
+   ========================================================================= */
 .container {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
   padding: 0 24px;
 }
 
-/* Layout helpers */
-.flex {
-  display: flex;
-}
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
 
-.flex-col {
-  display: flex;
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-/* Common card style for consistent UI */
 .card {
-  background: var(--color-surface);
+  background: var(--bg-surface);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
   padding: var(--spacing-xl);
-  border: 1px solid var(--color-border-light);
+  border: 1px solid var(--border-subtle);
 }
 
-/* Scrollbar styling (for webkit browsers) */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-surface-raised);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-tertiary);
 }
+
+::selection {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+/* =========================================================================
+   Editorial primitives — used across all pages
+   ========================================================================= */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.section-index {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.display-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 5rem);
+  line-height: 0.88;
+  letter-spacing: -0.025em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Silver gradient — themable */
+.display-title--silver {
+  background: linear-gradient(180deg, var(--text-primary) 0%, var(--text-secondary) 65%, var(--text-tertiary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Chrome-teal gradient — same on both themes (looks great on white and black) */
+.display-title--chrome {
+  background: linear-gradient(180deg, #5fe3e4 0%, #2bb0b1 50%, #1d8585 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+:root.dark-theme .display-title--chrome {
+  background: linear-gradient(180deg, #d6f7f7 0%, #5fe3e4 60%, #1d8585 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.editorial-shell {
+  position: relative;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: var(--spacing-xxl) clamp(20px, 5vw, 64px) var(--spacing-3xl);
+}
+
+/* Global mobile fixes — all pages that use .page-layout. */
+@media (max-width: 768px) {
+  .page-layout {
+    flex-direction: column;
+  }
+}
+
