@@ -1,15 +1,18 @@
 import React, { useEffect } from 'react';
 import AppRouter from './routes/AppRouter';
+import { applyFontFamilyPreset, normalizeFontPreset } from './utils/fontPreferences';
+import './index.css';
 import './styles/global.css';
+import './App.css';
 
 function App() {
   useEffect(() => {
     const textSize = localStorage.getItem('textSize') || 'medium';
     const theme = localStorage.getItem('theme') || 'light';
-    const fontFamily = localStorage.getItem('fontFamily') || 'system';
+    const fontPreset = normalizeFontPreset(localStorage.getItem('fontFamily'));
 
     const root = document.documentElement;
-    
+
     if (textSize === 'small') {
       root.style.fontSize = '14px';
     } else if (textSize === 'large') {
@@ -17,18 +20,14 @@ function App() {
     } else {
       root.style.fontSize = '16px';
     }
-    
+
     if (theme === 'dark') {
       root.classList.add('dark-theme');
-    }
-    
-    if (fontFamily === 'serif') {
-      root.style.fontFamily = 'Georgia, Cambria, "Times New Roman", Times, serif';
-    } else if (fontFamily === 'mono') {
-      root.style.fontFamily = '"Courier New", Courier, monospace';
     } else {
-      root.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
+      root.classList.remove('dark-theme');
     }
+
+    applyFontFamilyPreset(fontPreset);
   }, []);
 
   return <AppRouter />;

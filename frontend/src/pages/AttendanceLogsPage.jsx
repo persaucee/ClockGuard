@@ -3,6 +3,7 @@ import './AttendanceLogsPage.css';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import { api } from '../services/apiClient';
+import blobAccent from '../assets/Images/Blob.png';
 
 function getInitials(name) {
   if (!name) return '?';
@@ -43,16 +44,14 @@ function AttendanceLogsPage() {
     fetchData();
   }, []);
 
-  // Build a unified list: every employee appears once.
-  // Employees with logs → sorted by most recent activity.
-  // Employees with no logs → sorted alphabetically, appended at the bottom.
+  // Build a unified list: employees with logs sorted by most recent activity,
+  // then employees with no logs sorted alphabetically.
   const groupedEmployees = useMemo(() => {
     const normName = (s) => (s || '').trim().toLowerCase();
 
-    // Primary index: keyed by employee_id when present, otherwise by normalized name.
-    // Secondary index: keyed by normalized name for cross-referencing with /employees/.
+    // Keyed by employee_id when available, otherwise by normalized name.
     const groups = {};
-    const groupsByName = {}; // normalized-name → group
+    const groupsByName = {};
 
     logs.forEach((log) => {
       const key = log.employee_id || normName(log.employee_name);
@@ -64,23 +63,20 @@ function AttendanceLogsPage() {
           logs: [],
         };
         groups[key] = g;
-        // Register in the name index so employee seeding can find this group.
         const nk = normName(log.employee_name);
         if (nk && !groupsByName[nk]) groupsByName[nk] = g;
       }
       groups[key].logs.push(log);
     });
 
-    // Sort each group's logs newest-first and compute derived fields.
     Object.values(groups).forEach((g) => {
       g.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
       g.latestLog = g.logs[0];
       g.count = g.logs.length;
     });
 
-    // Seed with every known employee so no-log employees still appear.
-    // Match an existing group by employee_id first, then by normalized name.
-    // Only create a new zero-count entry if neither lookup finds a match.
+    // Seed with every known employee so zero-log employees still appear.
+    // Match by employee_id first, then normalized name.
     employees.forEach((emp) => {
       const empId = emp.employee_id || emp.id || null;
       const empName = emp.name || emp.employee_name || '';
@@ -89,11 +85,9 @@ function AttendanceLogsPage() {
       const existing = (empId && groups[empId]) || groupsByName[nk];
 
       if (existing) {
-        // Upgrade the matched group with the canonical employee record data.
         if (!existing.employeeId && empId) existing.employeeId = empId;
         if (empName && normName(existing.name) !== nk) existing.name = empName;
       } else {
-        // Genuinely no logs for this employee.
         const key = empId || nk || empName;
         groups[key] = {
           key,
@@ -149,12 +143,30 @@ function AttendanceLogsPage() {
         <Sidebar />
         <main className="page-content">
           <div className="content-container">
-            <div className="logs-page-header">
-              <h1 className="logs-page-title">Attendance Logs</h1>
-              {!loading && !error && (
-                <span className="logs-page-count">{groupedEmployees.length} employees</span>
-              )}
-            </div>
+            <section className="logs-hero">
+              <img
+                src={blobAccent}
+                alt=""
+                className="logs-hero-blob"
+                aria-hidden="true"
+              />
+              <div className="logs-hero-meta">
+                <span className="section-index">[ 02 ] · ATTENDANCE</span>
+                {!loading && !error && (
+                  <span className="logs-page-count">
+                    {groupedEmployees.length} EMPLOYEES
+                  </span>
+                )}
+              </div>
+              <h1 className="logs-hero-title">
+                EVERY<br />
+                <span className="display-title--silver">CLOCK MARK.</span>
+              </h1>
+              <p className="logs-hero-lede">
+                A continuous record of every verified clock event grouped by
+                employee — expand any name to walk through their full timeline.
+              </p>
+            </section>
 
             {loading && (
               <div className="logs-state-box">

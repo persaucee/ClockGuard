@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './LoginPage.css';
+import loginBg from '../assets/Images/login.png';
 import clockGuardLogo from '../assets/CGlogo.png';
 import api from '../services/apiClient';
 
@@ -13,7 +14,7 @@ function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     try {
       const response = await api.auth.login({ username, password });
 
@@ -35,59 +36,72 @@ function LoginPage() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-logo">
-          <img src={clockGuardLogo} alt="ClockGuard Logo" />
-        </div>
-        <h1>Admin Dashboard</h1>
-        
+    <div
+      className="login-page"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
+      <div className="login-page-vignette" aria-hidden="true" />
+
+      <header className="login-topbar">
+        <span className="login-topbar-mark">
+          CLOCK<span className="display-title--chrome">GUARD</span>
+        </span>
+        <span className="login-topbar-meta">SECURE · BIOMETRIC ACCESS</span>
+      </header>
+
+      <main className="login-stage">
+        <p className="login-eyebrow">
+          <span className="login-eyebrow-line" />
+          <span className="login-eyebrow-text">[ 01 ] · ADMIN GATEWAY</span>
+        </p>
+
+        <img src={clockGuardLogo} alt="ClockGuard" className="login-logo" />
+
+        <h1 className="login-display">
+          CLOCK<span className="display-title--chrome">GUARD</span>
+        </h1>
+
         <form className="login-form" onSubmit={handleSubmit}>
-          {error && (
-            <div className="error-message" style={{ 
-              color: '#dc3545', 
-              marginBottom: '1rem', 
-              padding: '0.5rem', 
-              backgroundColor: '#f8d7da', 
-              border: '1px solid #f5c6cb', 
-              borderRadius: '4px',
-              fontSize: '0.9rem'
-            }}>
-              {error}
-            </div>
-          )}
-          
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
+          {error && <div className="login-error">{error}</div>}
+
+          <div className="login-field">
+            <label htmlFor="username">USERNAME</label>
             <input
               type="text"
               id="username"
-              className="form-input"
-              placeholder="Enter your username"
+              className="login-input"
+              placeholder="admin"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              autoComplete="username"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
+          <div className="login-field">
+            <label htmlFor="password">PASSWORD</label>
             <input
               type="password"
               id="password"
-              className="form-input"
-              placeholder="Enter your password"
+              className="login-input"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
           </div>
 
-          <button type="submit" className="btn-primary btn-login">
-            Sign In
+          <button type="submit" className="login-submit">
+            Enter Console
+            <span aria-hidden="true">→</span>
           </button>
         </form>
-      </div>
+
+        <p className="login-footnote">
+          PROTECTED · 256-BIT · ENCRYPTED CHANNEL
+        </p>
+      </main>
     </div>
   );
 }

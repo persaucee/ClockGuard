@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import PayrollTable from '../components/PayrollTable';
 import { api } from '../services/apiClient';
+import blobAccent from '../assets/Images/Blob2.png';
 
 function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
@@ -227,18 +228,45 @@ function EmployeesPage() {
         <Sidebar />
         <main className="page-content">
           <div className="content-container">
-            <h1>Employees</h1>
-            {loading && <p>Loading employees...</p>}
-            {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+            <section className="emp-hero">
+              <img
+                src={blobAccent}
+                alt=""
+                className="emp-hero-blob"
+                aria-hidden="true"
+              />
+              <span className="section-index">[ 03 ] · ROSTER</span>
+              <h1 className="emp-hero-title">
+                YOUR<br />
+                <span className="display-title--chrome">PEOPLE.</span>
+              </h1>
+              <p className="emp-hero-lede">
+                Manage every employee's wage, edit shift records, and run
+                payroll across any window — all from a single editorial table.
+              </p>
+            </section>
+
+            {loading && (
+              <div className="emp-state">
+                <div className="logs-spinner" />
+                <p>LOADING EMPLOYEES…</p>
+              </div>
+            )}
+            {error && (
+              <div className="emp-error">
+                <span>⚠</span> {error}
+              </div>
+            )}
             {!loading && !error && (
               <>
-                <PayrollTable 
-                  employees={employees} 
+                <PayrollTable
+                  employees={employees}
                   onEmployeeUpdate={handleEmployeeUpdate}
                 />
-                
+
                 <div className="run-payroll-section">
-                  <h2>Run Payroll</h2>
+                  <span className="section-index">[ 04 ] · PROCESS</span>
+                  <h2 className="emp-section-title">RUN PAYROLL</h2>
                   <div className="payroll-controls">
                     <div className="date-inputs">
                       <div className="date-input-group">
@@ -278,7 +306,8 @@ function EmployeesPage() {
                 </div>
                 
                 <div className="uncalculated-shifts-section">
-                  <h2>Uncalculated Shifts</h2>
+                  <span className="section-index">[ 05 ] · PENDING</span>
+                  <h2 className="emp-section-title">UNCALCULATED SHIFTS</h2>
                   {shiftsLoading && <p>Loading shifts...</p>}
                   {!shiftsLoading && uncalculatedShifts.length === 0 && (
                     <p className="empty-message">No uncalculated shifts found.</p>

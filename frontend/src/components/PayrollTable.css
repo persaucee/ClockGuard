@@ -1,43 +1,49 @@
-/* PayrollTable Styles */
+/* =========================================================================
+   Payroll Table — themable
+   ========================================================================= */
 
 .payroll-table-container {
   width: 100%;
-  margin-top: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  overflow-x: auto;
 }
 
 .payroll-table {
   width: 100%;
   border-collapse: collapse;
-  background-color: var(--color-surface);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  background: transparent;
   table-layout: fixed;
 }
 
 .payroll-table thead {
-  background-color: var(--color-primary);
-  color: white;
+  background: var(--bg-overlay-soft);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .payroll-table th {
-  padding: 0.4rem 0.3rem;
+  padding: 14px 16px;
   text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
   font-weight: 600;
-  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 0;
 }
 
-.payroll-table th:nth-child(1) { width: 18%; }
-.payroll-table th:nth-child(2) { width: 30%; }
-.payroll-table th:nth-child(3) { width: 13%; }
+.payroll-table th:nth-child(1) { width: 22%; }
+.payroll-table th:nth-child(2) { width: 26%; }
+.payroll-table th:nth-child(3) { width: 14%; }
 .payroll-table th:nth-child(4) { width: 12%; }
-.payroll-table th:nth-child(5) { width: 15%; }
+.payroll-table th:nth-child(5) { width: 14%; }
 .payroll-table th:nth-child(6) { width: 12%; text-align: center; }
 
 .payroll-table tbody tr {
-  border-bottom: 1px solid var(--color-border);
-  transition: background-color var(--transition-fast);
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background var(--transition-fast);
 }
 
 .payroll-table tbody tr:last-child {
@@ -45,13 +51,14 @@
 }
 
 .payroll-table tbody tr:hover {
-  background-color: var(--color-background-alt);
+  background: var(--bg-overlay-soft);
 }
 
 .payroll-table td {
-  padding: 0.5rem 0.3rem;
-  color: var(--color-text);
-  font-size: 0.75rem;
+  padding: 14px 16px;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  font-size: 0.9rem;
   overflow-wrap: break-word;
   word-wrap: break-word;
 }
@@ -59,15 +66,15 @@
 .payroll-table td:nth-child(1),
 .payroll-table td:nth-child(2) {
   word-break: break-word;
-  overflow-wrap: break-word;
 }
 
 .payroll-table td:nth-child(3),
 .payroll-table td:nth-child(4),
 .payroll-table td:nth-child(5) {
-  font-family: 'Courier New', monospace;
-  font-weight: 500;
-  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
 }
 
 .payroll-table td:nth-child(5) {
@@ -79,168 +86,207 @@
   text-align: center;
 }
 
-/* Edit Button */
+/* Edit button */
 .edit-btn {
-  padding: 0.3rem 0.5rem;
-  background-color: var(--color-primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  background: var(--bg-overlay-soft);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 0.65rem;
-  font-weight: 500;
-  transition: background-color var(--transition-fast);
-  display: inline-block;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  transition: all var(--transition-fast);
   white-space: nowrap;
 }
 
 .edit-btn:hover {
-  background-color: var(--color-primary-dark, #0056b3);
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  border-color: var(--btn-bg);
 }
 
 .edit-btn:active {
   transform: scale(0.98);
 }
 
-/* Modal Overlay */
+/* Modal */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: var(--bg-overlay-strong);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: modalFade 200ms ease-out;
 }
 
-/* Modal Content */
+@keyframes modalFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .modal-content {
-  background-color: var(--color-surface);
-  border-radius: var(--radius-md);
-  padding: 2rem;
+  position: relative;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  padding: clamp(24px, 4vw, 40px);
   width: 90%;
   max-width: 500px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-xl);
+  animation: modalRise 250ms ease-out;
+}
+
+@keyframes modalRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .modal-content h2 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  color: var(--color-text);
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg);
 }
 
-/* Form Styles */
-.form-group {
-  margin-bottom: 1.5rem;
+.modal-content .form-group {
+  margin-bottom: 18px;
 }
 
-.form-group label {
+.modal-content .form-group label {
   display: block;
-  margin-bottom: 0.5rem;
-  color: var(--color-text);
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.24em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
   font-weight: 500;
-  font-size: 0.9375rem;
 }
 
-.form-group input {
+.modal-content .form-group input {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
-  color: var(--color-text);
-  background-color: var(--color-background);
-  box-sizing: border-box;
+  padding: 12px 18px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
-.form-group input:focus {
+.modal-content .form-group input:focus {
   outline: none;
   border-color: var(--color-primary);
+  background: var(--bg-input-focus);
+  box-shadow: 0 0 0 3px rgba(95, 227, 228, 0.18);
 }
 
-/* Error Message */
 .error-message {
-  color: #dc3545;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  padding: 0.75rem;
-  border-radius: var(--radius-sm);
-  margin-bottom: 1rem;
-  font-size: 0.875rem;
+  background: rgba(185, 28, 28, 0.06);
+  border: 1px solid rgba(185, 28, 28, 0.25);
+  color: var(--color-error);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
 }
 
-/* Modal Actions */
+:root.dark-theme .error-message {
+  background: rgba(255, 107, 107, 0.1);
+  border-color: rgba(255, 107, 107, 0.4);
+  color: #ffb3b3;
+}
+
 .modal-actions {
   display: flex;
-  gap: 1rem;
+  gap: 10px;
   justify-content: flex-end;
-  margin-top: 2rem;
+  margin-top: var(--spacing-lg);
 }
 
 .cancel-btn,
 .save-btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.9375rem;
-  font-weight: 500;
+  padding: 12px 22px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: background-color var(--transition-fast);
+  transition: all var(--transition-fast);
+  border: none;
 }
 
 .cancel-btn {
-  background-color: var(--color-background-alt);
-  color: var(--color-text);
+  background: var(--bg-overlay-soft);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
 }
 
 .cancel-btn:hover:not(:disabled) {
-  background-color: var(--color-border);
+  background: var(--bg-overlay-medium);
+  border-color: var(--text-primary);
 }
 
 .save-btn {
-  background-color: var(--color-primary);
-  color: white;
+  background: linear-gradient(135deg, #5fe3e4 0%, #2bb0b1 60%, #1d8585 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px -8px rgba(95, 227, 228, 0.4);
+}
+
+:root.dark-theme .save-btn {
+  background: linear-gradient(135deg, #b8fafa 0%, #5fe3e4 60%, #2bb0b1 100%);
+  color: #050505;
 }
 
 .save-btn:hover:not(:disabled) {
-  background-color: var(--color-primary-dark, #0056b3);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 32px -10px rgba(95, 227, 228, 0.6);
 }
 
 .cancel-btn:disabled,
 .save-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Responsive Design */
+/* Responsive */
 @media (max-width: 768px) {
   .payroll-table th,
   .payroll-table td {
-    padding: var(--spacing-sm) var(--spacing-md);
-    font-size: 0.875rem;
+    padding: 12px 12px;
+    font-size: 0.825rem;
   }
-  
+
   .payroll-table th {
-    font-size: 0.75rem;
+    font-size: 0.6rem;
   }
 }
 
 @media (max-width: 480px) {
-  .payroll-table-container {
-    margin-top: var(--spacing-md);
-  }
-  
   .payroll-table th,
   .payroll-table td {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: 0.8125rem;
+    padding: 10px 10px;
+    font-size: 0.78rem;
   }
-  
+
   .payroll-table th {
-    font-size: 0.6875rem;
+    font-size: 0.55rem;
   }
 }
